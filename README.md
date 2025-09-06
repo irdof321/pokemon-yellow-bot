@@ -7,3 +7,5 @@ https://glitchcity.wiki/wiki/Pok%C3%A9mon_Yellow
 https://docs.pyboy.dk/index.html#pyboy.PyBoyMemoryView
 
 https://bulbapedia.bulbagarden.net/wiki/Character_encoding_(Generation_I)
+
+https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_data_structure_(Generation_I)

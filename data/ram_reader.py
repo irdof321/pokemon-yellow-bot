@@ -240,6 +240,7 @@ class MainData(DataType):
     EnemyBaseExp       = MemoryData(0xD008, 0xD008, "Enemy's Base Experience yield")
     
     # Pokémon 1st Slot (In-Battle)
+    Pokemon1SlotBattle      = MemoryData(0xD009, 0xD030, "Player's 1st Pokémon in battle data block (48 bytes)")
     PlayerPokemonName       = MemoryData(0xD009, 0xD013, "Player's Pokémon Name")
     PlayerPokemonNumber     = MemoryData(0xD014, 0xD014, "Player's Pokémon Number")
     PlayerCurrentHP         = MemoryData(0xD015, 0xD016, "Player's Current HP (2 bytes)")
