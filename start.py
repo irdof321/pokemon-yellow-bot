@@ -9,10 +9,10 @@ from data.pokemon import Pokemon
 start_time = time.time()
 
 # RomName = 'PokemonBleu.gb'
-RomName = 'PokemonRouge.gb'
-# RomName = 'PokemonJaune.gb'
+# RomName = 'PokemonRouge.gb'
+RomName = 'PokemonJaune.gb'
 
-pyboy = PyBoy(RomName,
+pyboy = PyBoy(f"games/{RomName}",
               window="SDL2",
               log_level="INFO")
 

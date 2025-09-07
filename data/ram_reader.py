@@ -1,15 +1,18 @@
 
-
-
-
+import threading
+import time
+from loguru import logger
 import pyboy
 
 
 
 class MemoryData:
+
+    shift = 0x5  # Offset to apply when reading from WRAM in PyBoy
+
     def __init__(self, start_address, end_address, description=""):
-        self.start_address = start_address
-        self.end_address = end_address
+        self.start_address = start_address + self.shift
+        self.end_address = end_address + self.shift
         self.description = description
         
     def size(self) -> int:
@@ -17,31 +20,23 @@ class MemoryData:
 
     def __repr__(self):
         return f"MemoryData({self.start_address:#06X}, {self.end_address:#06X}, {self.description})"
+    
+    @staticmethod
+    def set_shift(shift: int):
+        MemoryData.shift = shift
 
 
 class DataType:
     def data_size(self, elem: MemoryData):
         return elem.size()
     
+
     @classmethod
-    def get_pkm_yellow_addresses(cls, elem: MemoryData) -> MemoryData:
-        """
-        Retourne un MemoryData corrigé pour Pokémon Jaune :
-        - Si l'adresse est >= 0xCF1A (dans Red/Blue), elle est décalée de -1.
-        """
-        shift_start = -0x1 if elem.start_address >= 0xCF1A else 0
-        shift_end   = -0x1 if elem.end_address   >= 0xCF1A else 0
+    def get_data(cls, pyboy: 'pyboy.PyBoy', elem: MemoryData) -> bytes:
+        """Lit les données mémoire spécifiées par `elem` depuis l'instance PyBoy."""
+        return pyboy.memory[elem.start_address : elem.end_address + 1]
 
-        return MemoryData(
-            elem.start_address + shift_start,
-            elem.end_address + shift_end,
-            elem.description
-        )
-        
-        
-        
-
-class SavedData(DataType):
+class SavedPokemonData(DataType):
     #SRAM
     
     #Bank 0
@@ -80,7 +75,7 @@ class SavedData(DataType):
     GlobalChecksum_3           = MemoryData(0xBA4C, 0xBA4C)  # 0x1 byte
     IndividualChecksums_3      = MemoryData(0xBA4D, 0xBA52)  # 0x6 bytes
 
-class MainData(DataType):
+class MainPokemonData(DataType):
     #WRAM
     # Audio
     AudioMuteFlag                = MemoryData(0xC002, 0xC002, "Bit 7: 1 if audio is muted. Other bits: pause music, continue SFX")
@@ -545,8 +540,8 @@ class MainData(DataType):
     Pokemons_in_box = MemoryData(0xDA96, 0xDD29, "All boxes' Pokémon (14 boxes of 20 Pokémon each = 280 total)")
     Trainer_names_boxes = MemoryData(0xDD2A, 0xDE05, "All boxes' trainer names (11 bytes each, 14 boxes of 20 Pokémon each = 280 total)")
     Nickname_boxes = MemoryData(0xDE06, 0xDEE1, "All boxes' nicknames (11 bytes each, 14 boxes of 20 Pokémon each = 280 total)")
-    
-class InternalData(DataType):
+
+class InternalPokemonData(DataType):
     OamDmaRoutine = MemoryData(0xFF80, 0xFF89, "OAM DMA routine")
     
     # Misc
@@ -607,10 +602,44 @@ class InternalData(DataType):
     JoypadInput        = MemoryData(0xFFF8, 0xFFF8, "Joypad input")
     JoypadPollingFlag  = MemoryData(0xFFF9, 0xFFF9, "Disable joypad polling flag")
 
-class PokemonYellowRamReader:
-    def __init__(self, pyboy):
-        self.pyboy = pyboy
-        self.ram = pyboy.get_memory()
+
         
-        
-    
+
+
+# ... (tes imports existants)
+# from data.pokemon import Pokemon  # Importé dans la fonction pour éviter les cycles
+
+class SavedPokemonData(DataType):
+    # --- tes MemoryData existants ici ---
+    # Exemple (remplace par ton vrai champ) :
+    # Pokemon1SlotBattle = MemoryData(0xD16B, 0xD192, "First Pokémon battle block")
+
+    @staticmethod
+    def start_pokemon_logger(pyboy, pokemon_md: MemoryData, interval_sec: int = 60):
+        """
+        Lance un thread qui logge les infos du Pokémon défini par 'pokemon_md' toutes les 'interval_sec' secondes.
+        Retourne le thread (daemon).
+        """
+        # Déterminer Yellow dynamiquement si possible
+        is_yellow_flag = False
+        try:
+            gv = getattr(pyboy, "game_version", None)
+            is_yellow_flag = bool(getattr(gv, "is_yellow", False))
+        except Exception:
+            pass
+
+        def _worker():
+            # Import tardif pour éviter import-cycles (pokemon -> ram_reader)
+            from data.pokemon import Pokemon
+            while True:
+                try:
+                    mon = Pokemon.from_memory(pyboy, pokemon_md, is_yellow=is_yellow_flag)
+                    # __str__ de ta classe Pokemon est déjà propre ; on logge la ligne lisible
+                    logger.info(str(mon))
+                except Exception as e:
+                    logger.exception(f"[PokemonLogger] failure: {e}")
+                time.sleep(interval_sec)
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+        return t

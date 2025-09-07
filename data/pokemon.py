@@ -2,7 +2,7 @@ import pyboy
 from dataclasses import dataclass
 from typing import List, Dict
 from data.decoder import decode_pkm_text
-from data.ram_reader import MemoryData, SavedData
+from data.ram_reader import MemoryData, SavedPokemonData
 
 # --- Status flags ---
 STATUS_BIT_MASKS = {
@@ -90,9 +90,9 @@ class Pokemon:
     @classmethod
     def from_memory(cls, pyboy: 'pyboy.PyBoy', data: MemoryData, is_yellow=True) -> 'Pokemon':
         """Load a Pokémon struct directly from PyBoy memory."""
-        shift = 0x5
-        fixed = SavedData.get_pkm_yellow_addresses(data) if is_yellow else data
-        raw_data = list(pyboy.memory[fixed.start_address + shift : fixed.end_address + 1 + shift])
+        
+        fixed = SavedPokemonData.get_pkm_yellow_addresses(data) if is_yellow else data
+        raw_data = list(pyboy.memory[fixed.start_address  : fixed.end_address + 1 ])
         return cls(raw_data, fixed.start_address, pyboy)
 
     # --- Properties ---
