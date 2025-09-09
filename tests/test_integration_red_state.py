@@ -7,7 +7,7 @@ from data.ram_reader import MemoryData, MainPokemonData
 from data.decoder import decode_pkm_text
 
 ROM_PATH   = "games/PokemonRouge.gb"           # adjust if needed
-STATE_PATH = "games/PokemonTestClassPokemon.state"
+STATE_PATH = "games/Rouge/PokemonTestClassPokemon.state"
 
 pytestmark = pytest.mark.integration
 

@@ -1,6 +1,6 @@
 # tests/test_pokemon.py
 import pytest
-from data.pokemon import Pokemon, POKEMON_LAYOUT
+from data.pokemon import PokemonBattleSlot, PokemonParty, POKEMON_LAYOUT_BATTLE, POKEMON_ROM_ID_TO_PKDX_ID
 from data.ram_reader import MemoryData, MainPokemonData
 # tests/test_pokemon_from_state.py
 import os
@@ -18,19 +18,19 @@ class DummyPyBoy:
 def make_fake_pokemon_bytes():
     data = bytearray(40)
     # number
-    data[POKEMON_LAYOUT["number"][0]] = 42
+    data[POKEMON_LAYOUT_BATTLE["number"][0]] = 42
     # level
-    data[POKEMON_LAYOUT["level"][0]] = 50
+    data[POKEMON_LAYOUT_BATTLE["level"][0]] = 50
     # current_hp = 1234 (0x04D2) -> hi, lo = [0x04, 0xD2]
-    data[POKEMON_LAYOUT["current_hp"][0]:POKEMON_LAYOUT["current_hp"][1]] = bytes([0x04, 0xD2])
+    data[POKEMON_LAYOUT_BATTLE["current_hp"][0]:POKEMON_LAYOUT_BATTLE["current_hp"][1]] = bytes([0x04, 0xD2])
     # max_hp = 1300 (0x0514) -> [0x05, 0x14]
-    data[POKEMON_LAYOUT["max_hp"][0]:POKEMON_LAYOUT["max_hp"][1]] = bytes([0x05, 0x14])
+    data[POKEMON_LAYOUT_BATTLE["max_hp"][0]:POKEMON_LAYOUT_BATTLE["max_hp"][1]] = bytes([0x05, 0x14])
     # moves
-    data[POKEMON_LAYOUT["moves"][0]:POKEMON_LAYOUT["moves"][1]] = bytes([1, 2, 3, 4])
+    data[POKEMON_LAYOUT_BATTLE["moves"][0]:POKEMON_LAYOUT_BATTLE["moves"][1]] = bytes([1, 2, 3, 4])
     # dvs
-    data[POKEMON_LAYOUT["dvs"][0]:POKEMON_LAYOUT["dvs"][1]] = bytes([0xAB, 0xCD])
+    data[POKEMON_LAYOUT_BATTLE["dvs"][0]:POKEMON_LAYOUT_BATTLE["dvs"][1]] = bytes([0xAB, 0xCD])
     # pp
-    data[POKEMON_LAYOUT["pp"][0]:POKEMON_LAYOUT["pp"][1]] = bytes([10, 20, 30, 40])
+    data[POKEMON_LAYOUT_BATTLE["pp"][0]:POKEMON_LAYOUT_BATTLE["pp"][1]] = bytes([10, 20, 30, 40])
     return data
 
 
@@ -65,7 +65,8 @@ def test_pokemon_parsing(monkeypatch=None):
 
 # Chemins (adapte si besoin)
 ROM_PATH   = "games/PokemonRouge.gb"
-STATE_PATH = "games/PokemonTestClassPokemon.state"
+# STATE_PATH = "games/Rouge/PokemonTestClassPokemon.state"
+STATE_PATH = "games/Rouge/PokemonRouge.Carabaffe.gb.state"
 
 pytestmark = pytest.mark.integration
 
@@ -99,7 +100,6 @@ def test_pokemon_from_state_first_party_mon_is_squirtle_named_ABCDEFGHIJ():
         # Adapte le nom si, chez toi, c’est différent.
         md_candidates = [
             "Pokemon1SlotBattle",   # souvent ~44/48 octets; si tu as 40, tu as peut-être raccourci
-            "Pokemon1",             # si tu l’as nommé simplement "Pokemon1"
         ]
         for name in md_candidates:
             if hasattr(MainPokemonData, name):
@@ -109,15 +109,30 @@ def test_pokemon_from_state_first_party_mon_is_squirtle_named_ABCDEFGHIJ():
             pytest.skip("Aucun MemoryData pour un Pokémon (ex. SavedData.Pokemon1SlotBattle) n’a été trouvé.")
 
         # Construit l’objet à partir de la RAM. Red => is_yellow=False
-        mon = Pokemon.from_memory(pyboy, MD, is_yellow=False)
+        mon = PokemonBattleSlot.from_memory(pyboy, MD, is_yellow=False)
 
         # --- Assertions principales (basées sur tes captures) ---
-        # assert mon.number == 7, f"Expected Squirtle(7), got {mon.number}"
+        assert mon.number == 8, f"Expected Squirtle(0xb1), got {mon.number}" 
         # le décodage Gen1 peut varier selon ton mapping — on tolère un 'startswith'
-        assert mon.name.startswith("ABCDEFGH"), f"Got name: {mon.name}"
-        assert mon.level == 5, f"Expected level 5, got {mon.level}"
-        assert mon.current_hp == 14 and mon.max_hp == 20, f"Expected 14/20, got {mon.current_hp}/{mon.max_hp}"
+        mon.status
+        assert mon.nickname.startswith("ABCDEFGH"), f"Got nickname: {mon.nickname}"
+        assert mon.name == "Wartortle", f"Expected Wartortle, got {mon.name}"
+        assert mon.level == 16, f"Expected level 16, got {mon.level}"
+        assert mon.current_hp == 23 and mon.max_hp == 49, f"Expected 23/49, got {mon.current_hp}/{mon.max_hp}"
         assert mon.types[0] == "Water", f"Expected type1 Water, got {mon.types[0]}"
+
+    # Load second pokemon in party (Daradagnan)
+        md2 = getattr(MainPokemonData, "Pokemon2", None)
+        if md2 is None:
+            pytest.skip("No MemoryData for second Pokémon found in MainPokemonData. Skipping second Pokémon test.")
+        mon2 = PokemonParty.from_memory(pyboy, md2, is_yellow=False)
+        assert mon2.number == 15, f"Expected Dragonite(0xF5), got {mon2.number}"
+        assert mon2.nickname.startswith("DARDARGNAN"), f"Got name: {mon2.nickname}"
+        assert mon2.name == "Beedrill", f"Expected Beedrill, got {mon2.name}"
+        assert mon2.level == 12, f"Expected level 12, got {mon2.level}"
+        assert mon2.current_hp == 39 and mon2.max_hp == 39, f"Expected 39/39, got {mon2.current_hp}/{mon2.max_hp}"
+        assert mon2.types[0] == "Bug", f"Expected type1 Bug, got {mon2.types[0]}"
+        assert mon2.types[1] == "Poison", f"Expected type2 Poison, got {mon2.types[1]}"
 
     finally:
         pyboy.stop()
