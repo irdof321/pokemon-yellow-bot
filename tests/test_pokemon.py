@@ -1,5 +1,6 @@
 # tests/test_pokemon.py
 import pytest
+from data.decoder import decode_pkm_text
 from data.pokemon import PokemonBattleSlot, PokemonParty, POKEMON_LAYOUT_BATTLE, POKEMON_ROM_ID_TO_PKDX_ID
 from data.ram_reader import MemoryData, MainPokemonData
 # tests/test_pokemon_from_state.py
@@ -137,7 +138,76 @@ def test_pokemon_from_state_first_party_mon_is_squirtle_named_ABCDEFGHIJ():
     finally:
         pyboy.stop()
 
+# --- Constantes mémoire Gen 1 (RB/Y) ---
+PARTY_BASE_ADDR    = 0xD16B
+PARTY_STRUCT_LEN   = 0x2C  # 44 bytes
+NICK_BASE_ADDR     = 0xD2B5
+NICK_LEN           = 0x0B  # 11 bytes (terminator 0x50 possible)
+CF1A               = 0xCF1A  # seuil de décalage Yellow
+PYBOY_WRAM_SHIFT   = 0x5     # décalage PyBoy WRAM
 
+def rb_yellow_addr(addr: int, is_yellow: bool) -> int:
+    return addr - 1 if is_yellow and addr >= CF1A else addr
+
+
+
+def nickname_slot_base(i: int) -> int:
+    return NICK_BASE_ADDR + (i-1) * NICK_LEN
+
+
+def md_for_party_slot(slot: int) -> MemoryData:
+    return getattr(MainPokemonData, f"Pokemon{slot}", None)
+
+@pytest.mark.skipif(not _has_files(), reason="ROM or state not found locally.")
+def test_party_order_matches_menu_screenshot():
+    # RB => pas de Yellow-shift, mais on garde la fct pour compat
+    is_yellow = False
+
+    # important pour l'accès direct .memory (PyBoy WRAM +0x5)
+    MemoryData.set_shift(0x5)
+
+    pyboy = PyBoy(ROM_PATH, window="null", log_level="WARNING")
+    try:
+        with open(STATE_PATH, "rb") as f:
+            pyboy.load_state(f)
+
+        # Attendus (issus de ta capture)
+        expected = [
+            # slot, dex, nickname, level, (cur,max), type1, type2 (optionnel)
+            (1,  8,   "ABCDEFGH", 16, (23, 49), "Water", "Water"),
+            (2, 15,   "DARDARGNAN", 12, (39, 39), "Bug", "Poison"),
+            (3, 16,   "ROUCOOL", 9, (28, 28), "Normal", "Flying"),
+            (4, 21,   "PIAFABEC", 5, (19, 19), "Normal", "Flying"),
+            (5, 39,   "RONDOUDOU", 3, (20, 20), "Normal", "Normal"),
+            (6,129,   "MAGICARPE", 5, (17, 17), "Water", "Water"),
+        ]
+
+        for slot, dex, nick, lvl, (hp, hpmax), t1, t2 in expected:
+            # 1) Lire le Pokémon Party depuis la RAM
+            md = md_for_party_slot(slot)
+            mon = PokemonParty.from_memory(pyboy, md, is_yellow=is_yellow)
+
+            # 3) Asserts
+            assert mon.number == dex, f"slot {slot}: expected dex {dex}, got {mon.number}"
+            assert mon.level == lvl,  f"slot {slot}: expected L{lvl}, got L{mon.level}"
+            assert mon.current_hp == hp and mon.max_hp == hpmax, \
+                f"slot {slot}: expected HP {hp}/{hpmax}, got {mon.current_hp}/{mon.max_hp}"
+
+            # Le décodeur supprime le terminator; la capture montre parfois un '_' final,
+            # on tolère ça en comparant en uppercase et en ignorant '_' terminaux.
+            assert mon.nickname.upper().rstrip('_') == nick, \
+                f"slot {slot}: expected nickname '{nick}', got '{mon.nickname}'"
+
+            # Types : certains mon auront type2=None (ex. Rondoudou en Gen1)
+            got_t1, got_t2 = mon.types
+            assert got_t1 == t1, f"slot {slot}: expected type1 {t1}, got {got_t1}"
+            if t2:
+                assert got_t2 == t2, f"slot {slot}: expected type2 {t2}, got {got_t2}"
+
+    finally:
+        pyboy.stop()
+
+        
 # ---- Script entrypoint ----
 if __name__ == "__main__":
     print("Running test_pokemon_parsing...")

@@ -755,7 +755,7 @@ class PokemonParty:
         raw_data = list(pyboy.memory[fixed.start_address : fixed.end_address + 1])
 
         if data == MainPokemonData.Pokemon1:
-            list_to_add = pyboy.memory[MemoryData.Nickname1.start_address : MemoryData.Nickname1.end_address + 1]
+            list_to_add = pyboy.memory[MainPokemonData.Nickname1.start_address : MainPokemonData.Nickname1.end_address + 1]
             raw_data += list(list_to_add)
         elif data == MainPokemonData.Pokemon2:
             list_to_add = pyboy.memory[MainPokemonData.Nickname2.start_address : MainPokemonData.Nickname2.end_address + 1]
