@@ -204,6 +204,18 @@ def test_party_order_matches_menu_screenshot():
             if t2:
                 assert got_t2 == t2, f"slot {slot}: expected type2 {t2}, got {got_t2}"
 
+            # Test moves of the Pokemon
+            moves = mon.moves
+
+            #find the moce in the ROM
+            #1. Load the bank containing the moves
+            pyboy.memory[0x2000] = 0x2C
+
+            # 2. print the text
+            move_1 = pyboy.memory[2,0xB0000:0xB0005]
+
+            print(moves)
+
     finally:
         pyboy.stop()
 
