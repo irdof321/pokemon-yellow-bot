@@ -1,2 +1,5 @@
 *.gb
 env/
+logs/
+*.pyc
+*/__psycache__/*
