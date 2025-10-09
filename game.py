@@ -3,7 +3,7 @@ import threading
 import time
 from pyboy import PyBoy
 
-from data.ram_reader import MemoryData, SavedPokemonData, SavedPokemonData
+from data.ram_reader import MemoryData, SavedPokemonData, SavedPokemonData,MainPokemonData
 from enum import Enum, auto
 from loguru import logger
 
@@ -115,6 +115,7 @@ class PokemonGame(PyBoy):
                 with open(self.save_state_path, "wb") as f:
                     self.save_state(f)
                 print("Game state saved.")
+                print(f"Battle counter : {self.get_scene()}")
                 start_time = time.time()
 
 
@@ -131,9 +132,13 @@ class PokemonGame(PyBoy):
                 elem.description
             )
         return SavedPokemonData.get_data(self, elem)
+    
+    def get_scene(self) -> str:
+        battle_id = MainPokemonData.BattleTypeID
+        return str(self.get_data(battle_id))
 
 
 if __name__ == "__main__":
     game = PokemonGame.get_game()
     # game.start()
-    game.start(file_save_state="games/Rouge/PokemonRouge.Carabaffe.gb.state")
+    game.start(file_save_state="games/Rouge/PokemonRouge.Battle-test.state")
