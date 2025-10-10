@@ -8,7 +8,7 @@ import pyboy
 
 class MemoryData:
 
-    shift = 0x5  # Offset to apply when reading from WRAM in PyBoy
+    shift = 0x0  # Offset to apply when reading from WRAM in PyBoy
 
     def __init__(self, start_address, end_address, description=""):
         self.start_address = start_address + self.shift

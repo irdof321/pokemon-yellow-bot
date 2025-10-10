@@ -42,7 +42,7 @@ def test_pokemon_parsing(monkeypatch=None):
 
     # Prepare memory
     mem = DummyPyBoy().memory
-    MemoryData.set_shift(0x5)
+    MemoryData.set_shift(0x0)
     base_raw = 0x3000
     md = MemoryData(base_raw, base_raw + 39, "fake mon")
     base_shifted = md.start_address
@@ -67,7 +67,7 @@ def test_pokemon_parsing(monkeypatch=None):
 # Chemins (adapte si besoin)
 ROM_PATH   = "games/PokemonRouge.gb"
 # STATE_PATH = "games/Rouge/PokemonTestClassPokemon.state"
-STATE_PATH = "games/Rouge/PokemonRouge.Carabaffe.gb.state"
+STATE_PATH = "games/Rouge/PokemonRed.Test1.state"
 
 pytestmark = pytest.mark.integration
 
@@ -88,7 +88,7 @@ def test_pokemon_from_state_first_party_mon_is_squirtle_named_ABCDEFGHIJ():
       - type1 == 'Water'
     """
     # Red/Blue => pas de correction Yellow; et décalage PyBoy WRAM +0x5
-    MemoryData.set_shift(0x5)
+    MemoryData.set_shift(0x0)
 
     # Fenêtre headless pour les tests
     pyboy = PyBoy(ROM_PATH, window="null", log_level="WARNING")
@@ -113,13 +113,13 @@ def test_pokemon_from_state_first_party_mon_is_squirtle_named_ABCDEFGHIJ():
         mon = PokemonBattleSlot.from_memory(pyboy, MD, is_yellow=False)
 
         # --- Assertions principales (basées sur tes captures) ---
-        assert mon.number == 8, f"Expected Squirtle(0xb1), got {mon.number}" 
+        assert mon.number == 129, f"Expected Squirtle(0xb1), got {mon.number}" 
         # le décodage Gen1 peut varier selon ton mapping — on tolère un 'startswith'
         mon.status
-        assert mon.nickname.startswith("ABCDEFGH"), f"Got nickname: {mon.nickname}"
-        assert mon.name == "Wartortle", f"Expected Wartortle, got {mon.name}"
-        assert mon.level == 16, f"Expected level 16, got {mon.level}"
-        assert mon.current_hp == 23 and mon.max_hp == 49, f"Expected 23/49, got {mon.current_hp}/{mon.max_hp}"
+        assert mon.nickname.startswith("MAGIKARP"), f"Got nickname: {mon.nickname}"
+        assert mon.name == "Magikarp", f"Expected Wartortle, got {mon.name}"
+        assert mon.level == 14, f"Expected level 14, got {mon.level}"
+        assert mon.current_hp == 34 and mon.max_hp == 34, f"Expected 23/49, got {mon.current_hp}/{mon.max_hp}"
         assert mon.types[0] == "Water", f"Expected type1 Water, got {mon.types[0]}"
 
     # Load second pokemon in party (Daradagnan)
@@ -128,10 +128,10 @@ def test_pokemon_from_state_first_party_mon_is_squirtle_named_ABCDEFGHIJ():
             pytest.skip("No MemoryData for second Pokémon found in MainPokemonData. Skipping second Pokémon test.")
         mon2 = PokemonParty.from_memory(pyboy, md2, is_yellow=False)
         assert mon2.number == 15, f"Expected Dragonite(0xF5), got {mon2.number}"
-        assert mon2.nickname.startswith("DARDARGNAN"), f"Got name: {mon2.nickname}"
+        assert mon2.nickname.startswith("BEEDRIL"), f"Got name: {mon2.nickname}"
         assert mon2.name == "Beedrill", f"Expected Beedrill, got {mon2.name}"
-        assert mon2.level == 12, f"Expected level 12, got {mon2.level}"
-        assert mon2.current_hp == 39 and mon2.max_hp == 39, f"Expected 39/39, got {mon2.current_hp}/{mon2.max_hp}"
+        assert mon2.level == 10, f"Expected level 12, got {mon2.level}"
+        assert mon2.current_hp == 35 and mon2.max_hp == 35, f"Expected 39/39, got {mon2.current_hp}/{mon2.max_hp}"
         assert mon2.types[0] == "Bug", f"Expected type1 Bug, got {mon2.types[0]}"
         assert mon2.types[1] == "Poison", f"Expected type2 Poison, got {mon2.types[1]}"
 
@@ -164,22 +164,21 @@ def test_party_order_matches_menu_screenshot():
     is_yellow = False
 
     # important pour l'accès direct .memory (PyBoy WRAM +0x5)
-    MemoryData.set_shift(0x5)
+    MemoryData.set_shift(0x0)
 
     pyboy = PyBoy(ROM_PATH, window="null", log_level="WARNING")
     try:
         with open(STATE_PATH, "rb") as f:
             pyboy.load_state(f)
 
-        # Attendus (issus de ta capture)
         expected = [
-            # slot, dex, nickname, level, (cur,max), type1, type2 (optionnel)
-            (1,  8,   "ABCDEFGH", 16, (23, 49), "Water", "Water"),
-            (2, 15,   "DARDARGNAN", 12, (39, 39), "Bug", "Poison"),
-            (3, 16,   "ROUCOOL", 9, (28, 28), "Normal", "Flying"),
-            (4, 21,   "PIAFABEC", 5, (19, 19), "Normal", "Flying"),
-            (5, 39,   "RONDOUDOU", 3, (20, 20), "Normal", "Normal"),
-            (6,129,   "MAGICARPE", 5, (17, 17), "Water", "Water"),
+            # slot, dex, nickname, level, (cur,max), type1, type2
+            (1, 129, "MAGIKARP",   14, (34, 34), "Water", "Water"),
+            (2,  15, "BEEDRILL",   10, (35, 35), "Bug", "Poison"),
+            (3,  16, "PIDGEY",     14, (39, 39), "Normal", "Flying"),
+            (4,  21, "SPEAROW",     7, (23, 23), "Normal", "Flying"),
+            (5,  35, "CLEFAIRY",   12, (39, 39), "Normal", "Normal"),
+            (6,   5, "CHARMELEON", 22, (53, 61), "Fire",  "Fire"),
         ]
 
         for slot, dex, nick, lvl, (hp, hpmax), t1, t2 in expected:
@@ -209,10 +208,10 @@ def test_party_order_matches_menu_screenshot():
 
             #find the moce in the ROM
             #1. Load the bank containing the moves
-            pyboy.memory[0x2000] = 0x2C
+            pyboy.memory[0x2000] = 0xE
 
             # 2. print the text
-            move_1 = pyboy.memory[2,0xB0000:0xB0005]
+            move_1 = pyboy.memory[2,0x000:0x006]
 
             print(moves)
 

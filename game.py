@@ -28,7 +28,7 @@ class PokemonGame(PyBoy):
 
     @property
     def game_version(self) -> GameVersion:
-        if self.rom_name == 'games/PokemonRouge.gb':
+        if self.rom_name == 'games/PokemonRed.gb':
             return GameVersion.RED
         elif self.rom_name == 'games/PokemonBleu.gb':
             return GameVersion.BLUE
@@ -42,8 +42,8 @@ class PokemonGame(PyBoy):
             input_choice = input("Choose your game pokemon red (r), blue (b) or yellow (y): ")
             if input_choice.lower() in ['r', 'red']:
                 input_choice = 'red'
-                MemoryData.set_shift(0x5)
-                path = 'games/PokemonRouge.gb'
+                MemoryData.set_shift(0x0)
+                path = 'games/PokemonRed.gb'
             elif input_choice.lower() in ['b', 'blue']:
                 input_choice = 'blue'
                 MemoryData.set_shift(0x5)
@@ -140,5 +140,5 @@ class PokemonGame(PyBoy):
 
 if __name__ == "__main__":
     game = PokemonGame.get_game()
-    # game.start()
-    game.start(file_save_state="games/Rouge/PokemonRouge.Battle-test.state")
+    game.start()
+    #game.start(file_save_state="games/Rouge/PokemonRouge.Battle-test.state")
