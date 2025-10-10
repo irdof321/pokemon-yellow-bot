@@ -3,6 +3,8 @@ import pytest
 from data.decoder import decode_pkm_text
 from data.pokemon import PokemonBattleSlot, PokemonParty, POKEMON_LAYOUT_BATTLE, POKEMON_ROM_ID_TO_PKDX_ID
 from data.ram_reader import MemoryData, MainPokemonData
+from data.move import Move, _read_move_name_current_bank
+from data.helpers import select_rom_bank
 # tests/test_pokemon_from_state.py
 import os
 import pytest
@@ -65,7 +67,7 @@ def test_pokemon_parsing(monkeypatch=None):
 
 
 # Chemins (adapte si besoin)
-ROM_PATH   = "games/PokemonRouge.gb"
+ROM_PATH   = "games/PokemonRed.gb"
 # STATE_PATH = "games/Rouge/PokemonTestClassPokemon.state"
 STATE_PATH = "games/Rouge/PokemonRed.Test1.state"
 
@@ -164,13 +166,14 @@ def test_party_order_matches_menu_screenshot():
     is_yellow = False
 
     # important pour l'accès direct .memory (PyBoy WRAM +0x5)
-    MemoryData.set_shift(0x0)
+    MemoryData.set_shift(0x5)
 
     pyboy = PyBoy(ROM_PATH, window="null", log_level="WARNING")
     try:
         with open(STATE_PATH, "rb") as f:
             pyboy.load_state(f)
 
+        # Attendus (issus de ta capture)
         expected = [
             # slot, dex, nickname, level, (cur,max), type1, type2
             (1, 129, "MAGIKARP",   14, (34, 34), "Water", "Water"),
@@ -203,23 +206,71 @@ def test_party_order_matches_menu_screenshot():
             if t2:
                 assert got_t2 == t2, f"slot {slot}: expected type2 {t2}, got {got_t2}"
 
-            # Test moves of the Pokemon
-            moves = mon.moves
 
-            #find the moce in the ROM
-            #1. Load the bank containing the moves
-            pyboy.memory[0x2000] = 0xE
-
-            # 2. print the text
-            move_1 = pyboy.memory[2,0x000:0x006]
-
-            print(moves)
 
     finally:
         pyboy.stop()
 
+
+def test_moves():
+    """
+    Quick integration test:
+      - Boots a saved state
+      - Selects the ROM bank that holds the move-name table
+      - Reads party slot #2
+      - Verifies a few canonical move names by ID
+      - Prints the monster name, its move IDs and their decoded names
+    """
+    pyboy = PyBoy(ROM_PATH, window="null", log_level="WARNING")
+    try:
+        # Load deterministic state
+        with open("games/Rouge/PokemonRed.TestMove.gb.state", "rb") as f:
+            pyboy.load_state(f)
+
+        # Map the bank containing the concatenated move names (adjust if needed)
+        select_rom_bank(pyboy, 0x2C)
+
+        # Read the Pokémon in party slot #2
+        md = md_for_party_slot(2)
+        mon = PokemonParty.from_memory(pyboy, md, is_yellow=False)
+        print(f"Pokémon: {mon.name}")
+
+        # Helper: resolve a list of move IDs to their names from the *current* bank
+        def get_move_names(move_ids: list[int]) -> list[str]:
+            return [_read_move_name_current_bank(pyboy, mid) for mid in move_ids]
+
+        # Sanity check: first few move IDs against known strings
+        probe_ids = [0, 1, 2, 3]
+        probe_names = get_move_names(probe_ids)
+        assert probe_names == ["NA", "POUND", "KARATE CHOP", "DOUBLESLAP"], probe_names
+
+        # Actual moves of the Pokémon (IDs + names)
+        move_ids = mon.moves
+        print(f"Move IDs: {move_ids}")
+
+        names = get_move_names(move_ids)
+        print("\n".join(names))
+
+        # Expected names for this saved state
+        assert names[0] == "POISON STING"
+        assert names[1] == "STRING SHOT"
+        assert names[2] == "NA"
+        assert names[3] == "NA"
+
+        # Test Move details
         
-# ---- Script entrypoint ----
+        moves_list = []
+        for move_id in move_ids:
+            if move_id > 0:
+                moves_list.append(Move.load_from_id(pyboy,move_id))
+
+        
+        print(moves_list[0])
+
+    finally:
+        pyboy.stop()
+
+
 if __name__ == "__main__":
     print("Running test_pokemon_parsing...")
     test_pokemon_parsing()

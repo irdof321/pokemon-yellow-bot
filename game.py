@@ -141,4 +141,4 @@ class PokemonGame(PyBoy):
 if __name__ == "__main__":
     game = PokemonGame.get_game()
     game.start()
-    #game.start(file_save_state="games/Rouge/PokemonRouge.Battle-test.state")
+    #game.start(file_save_state="games/Rouge/PokemonRed.Test1.state")

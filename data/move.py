@@ -1,174 +1,199 @@
 
-MOVE_LAYOUT = {
-    0x38000: {"name": "POUND",           "fr": "Écras'Face",        "range": (0x38000, 0x38005)},
-    0x38006: {"name": "KARATE CHOP",     "fr": "Poing Karaté",      "range": (0x38006, 0x3800B)},
-    0x3800C: {"name": "DOUBLESLAP",      "fr": "Torgnoles",         "range": (0x3800C, 0x38011)},
-    0x38012: {"name": "COMET PUNCH",     "fr": "Poing Comète",      "range": (0x38012, 0x38017)},
-    0x38018: {"name": "MEGA PUNCH",      "fr": "Ultimapoing",       "range": (0x38018, 0x3801D)},
-    0x3801E: {"name": "PAY DAY",         "fr": "Jackpot",           "range": (0x3801E, 0x38023)},
-    0x38024: {"name": "FIRE PUNCH",      "fr": "Poing de Feu",      "range": (0x38024, 0x38029)},
-    0x3802A: {"name": "ICE PUNCH",       "fr": "Poing de Glace",    "range": (0x3802A, 0x3802F)},
-    0x38030: {"name": "THUNDERPUNCH",    "fr": "Poing Éclair",      "range": (0x38030, 0x38035)},
-    0x38036: {"name": "SCRATCH",         "fr": "Griffe",            "range": (0x38036, 0x3803B)},
-    0x3803C: {"name": "VICEGRIP",        "fr": "Force Poigne",      "range": (0x3803C, 0x38041)},
-    0x38042: {"name": "GUILLOTINE",      "fr": "Guillotine",        "range": (0x38042, 0x38047)},
-    0x38048: {"name": "RAZOR WIND",      "fr": "Coupe-Vent",        "range": (0x38048, 0x3804D)},
-    0x3804E: {"name": "SWORDS DANCE",    "fr": "Danse-Lames",       "range": (0x3804E, 0x38053)},
-    0x38054: {"name": "CUT",             "fr": "Coupe",             "range": (0x38054, 0x38059)},
-    0x3805A: {"name": "GUST",            "fr": "Tornade",           "range": (0x3805A, 0x3805F)},
-    0x38060: {"name": "WING ATTACK",     "fr": "Cru-Aile",          "range": (0x38060, 0x38065)},
-    0x38066: {"name": "WHIRLWIND",       "fr": "Cyclone",           "range": (0x38066, 0x3806B)},
-    0x3806C: {"name": "FLY",             "fr": "Vol",               "range": (0x3806C, 0x38071)},
-    0x38072: {"name": "BIND",            "fr": "Étreinte",          "range": (0x38072, 0x38077)},
-    0x38078: {"name": "SLAM",            "fr": "Souplesse",         "range": (0x38078, 0x3807D)},
-    0x3807E: {"name": "VINE WHIP",       "fr": "Fouet Lianes",      "range": (0x3807E, 0x38083)},
-    0x38084: {"name": "STOMP",           "fr": "Écrasement",        "range": (0x38084, 0x38089)},
-    0x3808A: {"name": "DOUBLE KICK",     "fr": "Double Pied",       "range": (0x3808A, 0x3808F)},
-    0x38090: {"name": "MEGA KICK",       "fr": "Ultimawashi",       "range": (0x38090, 0x38095)},
-    0x38096: {"name": "JUMP KICK",       "fr": "Pied Sauté",        "range": (0x38096, 0x3809B)},
-    0x3809C: {"name": "ROLLING KICK",    "fr": "Mawashi Geri",      "range": (0x3809C, 0x380A1)},
-    0x380A2: {"name": "SAND-ATTACK",     "fr": "Jet de Sable",      "range": (0x380A2, 0x380A7)},
-    0x380A8: {"name": "HEADBUTT",        "fr": "Coup d'Boule",      "range": (0x380A8, 0x380AD)},
-    0x380AE: {"name": "HORN ATTACK",     "fr": "Koud’Korne",        "range": (0x380AE, 0x380B3)},
-    0x380B4: {"name": "FURY ATTACK",     "fr": "Furie",             "range": (0x380B4, 0x380B9)},
-    0x380BA: {"name": "HORN DRILL",      "fr": "Empal’Korne",       "range": (0x380BA, 0x380BF)},
-    0x380C0: {"name": "TACKLE",          "fr": "Charge",            "range": (0x380C0, 0x380C5)},
-    0x380C6: {"name": "BODY SLAM",       "fr": "Plaquage",          "range": (0x380C6, 0x380CB)},
-    0x380CC: {"name": "WRAP",            "fr": "Ligotage",          "range": (0x380CC, 0x380D1)},
-    0x380D2: {"name": "TAKE DOWN",       "fr": "Bélier",            "range": (0x380D2, 0x380D7)},
-    0x380D8: {"name": "THRASH",          "fr": "Mania",             "range": (0x380D8, 0x380DD)},
-    0x380DE: {"name": "DOUBLE-EDGE",     "fr": "Damoclès",          "range": (0x380DE, 0x380E3)},
-    0x380E4: {"name": "TAIL WHIP",       "fr": "Mimi-Queue",        "range": (0x380E4, 0x380E9)},
-    0x380EA: {"name": "POISON STING",    "fr": "Dard-Venin",        "range": (0x380EA, 0x380EF)},
-    0x380F0: {"name": "TWINEEDLE",       "fr": "Double Dard",       "range": (0x380F0, 0x380F5)},
-    0x380F6: {"name": "PIN MISSILE",     "fr": "Dard-Nuée",         "range": (0x380F6, 0x380FB)},
-    0x380FC: {"name": "LEER",            "fr": "Groz’Yeux",         "range": (0x380FC, 0x38101)},
-    0x38102: {"name": "BITE",            "fr": "Morsure",           "range": (0x38102, 0x38107)},
-    0x38108: {"name": "GROWL",           "fr": "Rugissement",       "range": (0x38108, 0x3810D)},
-    0x3810E: {"name": "ROAR",            "fr": "Hurlement",         "range": (0x3810E, 0x38113)},
-    0x38114: {"name": "SING",            "fr": "Berceuse",          "range": (0x38114, 0x38119)},
-    0x3811A: {"name": "SUPERSONIC",      "fr": "Ultrason",          "range": (0x3811A, 0x3811F)},
-    0x38120: {"name": "SONICBOOM",       "fr": "Sonic Boom",        "range": (0x38120, 0x38125)},
-    0x38126: {"name": "DISABLE",         "fr": "Entrave",           "range": (0x38126, 0x3812B)},
-    0x3812C: {"name": "ACID",            "fr": "Acide",             "range": (0x3812C, 0x38131)},
-    0x38132: {"name": "EMBER",           "fr": "Flammèche",         "range": (0x38132, 0x38137)},
-    0x38138: {"name": "FLAMETHROWER",    "fr": "Lance-Flammes",     "range": (0x38138, 0x3813D)},
-    0x3813E: {"name": "MIST",            "fr": "Brume",             "range": (0x3813E, 0x38143)},
-    0x38144: {"name": "WATER GUN",       "fr": "Pistolet à O",      "range": (0x38144, 0x38149)},
-    0x3814A: {"name": "HYDRO PUMP",      "fr": "Hydrocanon",        "range": (0x3814A, 0x3814F)},
-    0x38150: {"name": "SURF",            "fr": "Surf",              "range": (0x38150, 0x38155)},
-    0x38156: {"name": "ICE BEAM",        "fr": "Laser Glace",       "range": (0x38156, 0x3815B)},
-    0x3815C: {"name": "BLIZZARD",        "fr": "Blizzard",          "range": (0x3815C, 0x38161)},
-    0x38162: {"name": "PSYBEAM",         "fr": "Rafale Psy",        "range": (0x38162, 0x38167)},
-    0x38168: {"name": "BUBBLEBEAM",      "fr": "Bulles d'O",        "range": (0x38168, 0x3816D)},
-    0x3816E: {"name": "AURORA BEAM",     "fr": "Onde Boréale",      "range": (0x3816E, 0x38173)},
-    0x38174: {"name": "HYPER BEAM",      "fr": "Ultralaser",        "range": (0x38174, 0x38179)},
-    0x3817A: {"name": "PECK",            "fr": "Picpic",            "range": (0x3817A, 0x3817F)},
-    0x38180: {"name": "DRILL PECK",      "fr": "Bec Vrille",        "range": (0x38180, 0x38185)},
-    0x38186: {"name": "SUBMISSION",      "fr": "Sacrifice",         "range": (0x38186, 0x3818B)},
-    0x3818C: {"name": "LOW KICK",        "fr": "Balayage",          "range": (0x3818C, 0x38191)},
-    0x38192: {"name": "COUNTER",         "fr": "Riposte",           "range": (0x38192, 0x38197)},
-    0x38198: {"name": "SEISMIC TOSS",    "fr": "Frappe Atlas",      "range": (0x38198, 0x3819D)},
-    0x3819E: {"name": "STRENGTH",        "fr": "Force",             "range": (0x3819E, 0x381A3)},
-    0x381A4: {"name": "ABSORB",          "fr": "Vole-Vie",          "range": (0x381A4, 0x381A9)},
-    0x381AA: {"name": "MEGA DRAIN",      "fr": "Méga-Sangsue",      "range": (0x381AA, 0x381AF)},
-    0x381B0: {"name": "LEECH SEED",      "fr": "Vampigraine",       "range": (0x381B0, 0x381B5)},
-    0x381B6: {"name": "GROWTH",          "fr": "Croissance",        "range": (0x381B6, 0x381BB)},
-    0x381BC: {"name": "RAZOR LEAF",      "fr": "Tranch’Herbe",      "range": (0x381BC, 0x381C1)},
-    0x381C2: {"name": "SOLARBEAM",       "fr": "Lance-Soleil",      "range": (0x381C2, 0x381C7)},
-    0x381C8: {"name": "POISONPOWDER",    "fr": "Poudre Toxik",      "range": (0x381C8, 0x381CD)},
-    0x381CE: {"name": "STUN SPORE",      "fr": "Para-Spore",        "range": (0x381CE, 0x381D3)},
-    0x381D4: {"name": "SLEEP POWDER",    "fr": "Poudre Dodo",       "range": (0x381D4, 0x381D9)},
-    0x381DA: {"name": "PETAL DANCE",     "fr": "Danse-Fleur",       "range": (0x381DA, 0x381DF)},
-    0x381E0: {"name": "STRING SHOT",     "fr": "Sécrétion",         "range": (0x381E0, 0x381E5)},
-    0x381E6: {"name": "DRAGON RAGE",     "fr": "Draco-Rage",        "range": (0x381E6, 0x381EB)},
-    0x381EC: {"name": "FIRE SPIN",       "fr": "Danse Flammes",     "range": (0x381EC, 0x381F1)},
-    0x381F2: {"name": "THUNDERSHOCK",    "fr": "Éclair",            "range": (0x381F2, 0x381F7)},
-    0x381F8: {"name": "THUNDERBOLT",     "fr": "Tonnerre",          "range": (0x381F8, 0x381FD)},
-    0x381FE: {"name": "THUNDER WAVE",    "fr": "Cage-Éclair",       "range": (0x381FE, 0x38203)},
-    0x38204: {"name": "THUNDER",         "fr": "Fatal-Foudre",      "range": (0x38204, 0x38209)},
-    0x3820A: {"name": "ROCK THROW",      "fr": "Jet-Pierres",       "range": (0x3820A, 0x3820F)},
-    0x38210: {"name": "EARTHQUAKE",      "fr": "Séisme",            "range": (0x38210, 0x38215)},
-    0x38216: {"name": "FISSURE",         "fr": "Abîme",             "range": (0x38216, 0x3821B)},
-    0x3821C: {"name": "DIG",             "fr": "Tunnel",            "range": (0x3821C, 0x38221)},
-    0x38222: {"name": "TOXIC",           "fr": "Toxik",             "range": (0x38222, 0x38227)},
-    0x38228: {"name": "CONFUSION",       "fr": "Choc Mental",       "range": (0x38228, 0x3822D)},
-    0x3822E: {"name": "PSYCHIC",         "fr": "Psyko",             "range": (0x3822E, 0x38233)},
-    0x38234: {"name": "HYPNOSIS",        "fr": "Hypnose",           "range": (0x38234, 0x38239)},
-    0x3823A: {"name": "MEDITATE",        "fr": "Yoga",              "range": (0x3823A, 0x3823F)},
-    0x38240: {"name": "AGILITY",         "fr": "Hâte",              "range": (0x38240, 0x38245)},
-    0x38246: {"name": "QUICK ATTACK",    "fr": "Vive-Attaque",      "range": (0x38246, 0x3824B)},
-    0x3824C: {"name": "RAGE",            "fr": "Frénésie",          "range": (0x3824C, 0x38251)},
-    0x38252: {"name": "TELEPORT",        "fr": "Téléport",          "range": (0x38252, 0x38257)},
-    0x38258: {"name": "NIGHT SHADE",     "fr": "Ombre Nocturne",    "range": (0x38258, 0x3825D)},
-    0x3825E: {"name": "MIMIC",           "fr": "Copie",             "range": (0x3825E, 0x38263)},
-    0x38264: {"name": "SCREECH",         "fr": "Grincement",        "range": (0x38264, 0x38269)},
-    0x3826A: {"name": "DOUBLE TEAM",     "fr": "Reflet",            "range": (0x3826A, 0x3826F)},
-    0x38270: {"name": "RECOVER",         "fr": "Soin",              "range": (0x38270, 0x38275)},
-    0x38276: {"name": "HARDEN",          "fr": "Armure",            "range": (0x38276, 0x3827B)},
-    0x3827C: {"name": "MINIMIZE",        "fr": "Lilliput",          "range": (0x3827C, 0x38281)},
-    0x38282: {"name": "SMOKESCREEN",     "fr": "Brouillard",        "range": (0x38282, 0x38287)},
-    0x38288: {"name": "CONFUSE RAY",     "fr": "Onde Folie",        "range": (0x38288, 0x3828D)},
-    0x3828E: {"name": "WITHDRAW",        "fr": "Repli",             "range": (0x3828E, 0x38293)},
-    0x38294: {"name": "DEFENSE CURL",    "fr": "Boul'Armure",       "range": (0x38294, 0x38299)},
-    0x3829A: {"name": "BARRIER",         "fr": "Bouclier",          "range": (0x3829A, 0x3829F)},
-    0x382A0: {"name": "LIGHT SCREEN",    "fr": "Mur Lumière",       "range": (0x382A0, 0x382A5)},
-    0x382A6: {"name": "HAZE",            "fr": "Buée Noire",        "range": (0x382A6, 0x382AB)},
-    0x382AC: {"name": "REFLECT",         "fr": "Protection",        "range": (0x382AC, 0x382B1)},
-    0x382B2: {"name": "FOCUS ENERGY",    "fr": "Puissance",         "range": (0x382B2, 0x382B7)},
-    0x382B8: {"name": "BIDE",            "fr": "Patience",          "range": (0x382B8, 0x382BD)},
-    0x382BE: {"name": "METRONOME",       "fr": "Métronome",         "range": (0x382BE, 0x382C3)},
-    0x382C4: {"name": "MIRROR MOVE",     "fr": "Mimique",           "range": (0x382C4, 0x382C9)},
-    0x382CA: {"name": "SELFDESTRUCT",    "fr": "Destruction",       "range": (0x382CA, 0x382CF)},
-    0x382D0: {"name": "EGG BOMB",        "fr": "Bombe Œuf",         "range": (0x382D0, 0x382D5)},
-    0x382D6: {"name": "LICK",            "fr": "Léchouille",        "range": (0x382D6, 0x382DB)},
-    0x382DC: {"name": "SMOG",            "fr": "Purédpois",         "range": (0x382DC, 0x382E1)},
-    0x382E2: {"name": "SLUDGE",          "fr": "Détritus",          "range": (0x382E2, 0x382E7)},
-    0x382E8: {"name": "BONE CLUB",       "fr": "Massd’Os",          "range": (0x382E8, 0x382ED)},
-    0x382EE: {"name": "FIRE BLAST",      "fr": "Déflagration",      "range": (0x382EE, 0x382F3)},
-    0x382F4: {"name": "WATERFALL",       "fr": "Cascade",           "range": (0x382F4, 0x382F9)},
-    0x382FA: {"name": "CLAMP",           "fr": "Claquoir",          "range": (0x382FA, 0x382FF)},
-    0x38300: {"name": "SWIFT",           "fr": "Météores",          "range": (0x38300, 0x38305)},
-    0x38306: {"name": "SKULL BASH",      "fr": "Coud'Krâne",        "range": (0x38306, 0x3830B)},
-    0x3830C: {"name": "SPIKE CANNON",    "fr": "Picanon",           "range": (0x3830C, 0x38311)},
-    0x38312: {"name": "CONSTRICT",       "fr": "Constriction",      "range": (0x38312, 0x38317)},
-    0x38318: {"name": "AMNESIA",         "fr": "Amnésie",           "range": (0x38318, 0x3831D)},
-    0x3831E: {"name": "KINESIS",         "fr": "Télékinésie",       "range": (0x3831E, 0x38323)},
-    0x38324: {"name": "SOFTBOILED",      "fr": "E-Coque",           "range": (0x38324, 0x38329)},
-    0x3832A: {"name": "HI JUMP KICK",    "fr": "Pied Voltige",      "range": (0x3832A, 0x3832F)},
-    0x38330: {"name": "GLARE",           "fr": "Regard Médusant",   "range": (0x38330, 0x38335)},
-    0x38336: {"name": "DREAM EATER",     "fr": "Dévorêve",          "range": (0x38336, 0x3833B)},
-    0x3833C: {"name": "POISON GAS",      "fr": "Gaz Toxik",         "range": (0x3833C, 0x38341)},
-    0x38342: {"name": "BARRAGE",         "fr": "Pilonnage",         "range": (0x38342, 0x38347)},
-    0x38348: {"name": "LEECH LIFE",      "fr": "Vampirisme",        "range": (0x38348, 0x3834D)},
-    0x3834E: {"name": "LOVELY KISS",     "fr": "Grobisou",          "range": (0x3834E, 0x38353)},
-    0x38354: {"name": "SKY ATTACK",      "fr": "Piqué",             "range": (0x38354, 0x38359)},
-    0x3835A: {"name": "TRANSFORM",       "fr": "Morphing",          "range": (0x3835A, 0x3835F)},
-    0x38360: {"name": "BUBBLE",          "fr": "Écume",             "range": (0x38360, 0x38365)},
-    0x38366: {"name": "DIZZY PUNCH",     "fr": "Uppercut",          "range": (0x38366, 0x3836B)},
-    0x3836C: {"name": "SPORE",           "fr": "Spore",             "range": (0x3836C, 0x38371)},
-    0x38372: {"name": "FLASH",           "fr": "Flash",             "range": (0x38372, 0x38377)},
-    0x38378: {"name": "PSYWAVE",         "fr": "Vague Psy",         "range": (0x38378, 0x3837D)},
-    0x3837E: {"name": "SPLASH",          "fr": "Trempette",         "range": (0x3837E, 0x38383)},
-    0x38384: {"name": "ACID ARMOR",      "fr": "Acidarmure",        "range": (0x38384, 0x38389)},
-    0x3838A: {"name": "CRABHAMMER",      "fr": "Pince-Masse",       "range": (0x3838A, 0x3838F)},
-    0x38390: {"name": "EXPLOSION",       "fr": "Explosion",         "range": (0x38390, 0x38395)},
-    0x38396: {"name": "FURY SWIPES",     "fr": "Combo-Griffe",      "range": (0x38396, 0x3839B)},
-    0x3839C: {"name": "BONEMERANG",      "fr": "Osmerang",          "range": (0x3839C, 0x383A1)},
-    0x383A2: {"name": "REST",            "fr": "Repos",             "range": (0x383A2, 0x383A7)},
-    0x383A8: {"name": "ROCK SLIDE",      "fr": "Éboulement",        "range": (0x383A8, 0x383AD)},
-    0x383AE: {"name": "HYPER FANG",      "fr": "Croc de Mort",      "range": (0x383AE, 0x383B3)},
-    0x383B4: {"name": "SHARPEN",         "fr": "Affûtage",          "range": (0x383B4, 0x383B9)},
-    0x383BA: {"name": "CONVERSION",      "fr": "Conversion",        "range": (0x383BA, 0x383BF)},
-    0x383C0: {"name": "TRI ATTACK",      "fr": "Triplattaque",      "range": (0x383C0, 0x383C5)},
-    0x383C6: {"name": "SUPER FANG",      "fr": "Croc Fatal",        "range": (0x383C6, 0x383CB)},
-    0x383CC: {"name": "SLASH",           "fr": "Tranche",           "range": (0x383CC, 0x383D1)},
-    0x383D2: {"name": "SUBSTITUTE",      "fr": "Clonage",           "range": (0x383D2, 0x383D7)},
-    0x383D8: {"name": "STRUGGLE",        "fr": "Lutte",             "range": (0x383D8, 0x383DD)},
+from data.pokemon import  POKEMON_TYPES
+from dataclasses import dataclass
+from data.helpers import select_rom_bank
+from data.decoder import decode_pkm_text
+
+
+def find_index(li : list, number,max_occ=999999):
+    try:
+        if max_occ == 0:
+            return 0
+        idx = li.index(number)
+        max_occ -=1
+        return idx + 1 + find_index(li[idx+1:],number,max_occ)
+    except ValueError:
+        return 0
+
+# --- Find start of the Nth (1-based) 0x50-terminated string in the *current* bank
+def _move_name_ptr_current_bank(pyboy, move_id: int, table_base: int = 0x4000) -> int:
+    """
+    Return a pointer (address) to the start of the Nth move name in the
+    *currently selected* ROM bank. No bank selection here.
+    - move_id: 1-based (0 => empty slot).
+    - table_base: where the concatenated names start (0x4000 in this bank).
+    """
+    if move_id <= 0:
+        return -1  # empty / NA
+    idx = find_index(pyboy.memory[0x4000:0x460F],0x50,move_id-1)
+    
+    return  idx   # now at the first byte of the requested name
+
+# --- Read+decode one move name from the *current* bank (no constants, no bank switch)
+def _read_move_name_current_bank(pyboy, move_id: int, table_base: int = 0x4000, cap: int = 24) -> str:
+    """
+    Decode the move name at the current bank using only the ID:
+    - Walk to the Nth string via terminators, then read a small window.
+    - Your decode_pkm_text() stops at 0x50, so 'cap' is just a safe upper bound.
+    """
+    if move_id == 0:
+        return "NA"
+    start = _move_name_ptr_current_bank(pyboy, move_id, table_base=table_base)
+    if start < 0:
+        return "NA"
+    raw = pyboy.memory[0x4000+start:0xB060F]
+    return decode_pkm_text(raw, stop_at_terminator=True)
+
+
+FUNCTION_CODE_EFFECT = {
+    0x00: "Just damage.",
+    0x01: "Target falls asleep.",
+    0x02: "The target may be poisoned. 52/256 chance (20.31%).",
+    0x03: "The user regains HP equal to 50% of the damage dealt, minimum 1 HP.",
+    0x04: "The target may be burned. 26/256 chance (10.16%).",
+    0x05: "The target may be frozen. 26/256 chance (10.16%).",
+    0x06: "The target may be paralyzed. 26/256 chance (10.16%). Pokémon that are the same type as the move cannot be paralyzed.",
+    0x07: "The user faints. Damage calculation uses target's Defense as halved.",
+    0x08: "Works only if the target is asleep. If so, user regains HP equal to half the damage dealt (min 1 HP).",
+    0x09: "Uses the last move the target used, replacing this move.",
+    0x0A: "Raises the user's Attack by 1 stage.",
+    0x0B: "Raises the user's Defense by 1 stage.",
+    0x0C: "Raises the user's Speed by 1 stage.",
+    0x0D: "Raises the user's Special by 1 stage.",
+    0x0E: "Raises the user's Accuracy by 1 stage.",
+    0x0F: "Raises the user's Evasion by 1 stage.",
+    0x10: "Pay Day effect: if attack works and EXP can be gained, adds 2 × user's Level to money earned after battle.",
+    0x11: "The attack will hit without fail.",
+    0x12: "Lowers the target's Attack by 1 stage.",
+    0x13: "Lowers the target's Defense by 1 stage.",
+    0x14: "Lowers the target's Speed by 1 stage.",
+    0x15: "Lowers the target's Special by 1 stage.",
+    0x16: "Lowers the target's Accuracy by 1 stage.",
+    0x17: "Lowers the target's Evasion by 1 stage.",
+    0x18: "Changes the user's type to the target's until switching or battle end.",
+    0x19: "Nullifies all stat mods and cures foe of status/confusion; also negates barriers, Leech Seed, and Mist.",
+    0x1A: "Bide: deal 2× the damage taken during Bide (flat, typeless).",
+    0x1B: "Locked for 3–4 turns; after series ends, user becomes confused.",
+    0x1C: "Immediately ends a wild battle (fails in Trainer battles).",
+    0x1D: "Hits 2–5 times (37.5% for 2 or 3 hits; 12.5% for 4 or 5).",
+    0x1E: "Seemingly the same as $1D?",
+    0x1F: "May cause flinch. 26/256 chance (10.16%).",
+    0x20: "Puts the target to sleep.",
+    0x21: "High chance to poison: 103/256 (40.23%).",
+    0x22: "High chance to burn: 77/256 (30.07%).",
+    0x23: "High chance to freeze: 77/256 (30.07%).",
+    0x24: "High chance to paralyze: 77/256 (30.07%). Does not paralyze if target shares the move's type.",
+    0x25: "High chance to flinch: 77/256 (30.07%).",
+    0x26: "OHKO; fails if user's Speed < target's. Affected by type immunities. Technically deals 65,535 damage.",
+    0x27: "Two-turn move: charge (glow) then attack.",
+    0x28: "Deals damage equal to half the target's current HP (rounded up). Ignores type immunities.",
+    0x29: "Ignores type immunities to deal flat damage per move (e.g., Sonic Boom 20, Seismic Toss/Night Shade = Level, Dragon Rage 40, Psywave variable).",
+    0x2A: "Binding move (Wrap-like) for 2–5 turns; cancels if first turn misses; target can switch; user locked into it.",
+    0x2B: "Fly effect: invulnerable first turn (except Bide/Swift), strike second turn.",
+    0x2C: "Two-hit attack this turn; each hit deals equal damage.",
+    0x2D: "If the attack misses, the user loses 50% of their max HP.",
+    0x2E: "Mist effect: prevents the opponent from lowering the user's stats until switching.",
+    0x2F: "Focus Energy (bugged in RB/GY): reduces crit rate to 25% of original instead of 4×.",
+    0x30: "Recoil: user takes 1/4 of damage dealt (min 1 HP).",
+    0x31: "Confuses the target (100% if it hits).",
+    0x32: "Raises the user's Attack by 2 stages.",
+    0x33: "Raises the user's Defense by 2 stages.",
+    0x34: "Raises the user's Speed by 2 stages.",
+    0x35: "Raises the user's Special by 2 stages.",
+    0x36: "Raises the user's Accuracy by 2 stages.",
+    0x37: "Raises the user's Evasion by 2 stages.",
+    0x38: "Recover/Softboiled: heal 1/2 max HP; fails at full HP and on certain 256-boundary HP deficits (RB/Y bug).",
+    0x39: "Transform: copy target's species, type, stats (except Level/HP), stat mods, and moves (each set to 5 PP). Ditto is immune.",
+    0x3A: "Lowers the target's Attack by 2 stages.",
+    0x3B: "Lowers the target's Defense by 2 stages.",
+    0x3C: "Lowers the target's Speed by 2 stages.",
+    0x3D: "Lowers the target's Special by 2 stages.",
+    0x3E: "Lowers the target's Accuracy by 2 stages.",
+    0x3F: "Lowers the target's Evasion by 2 stages.",
+    0x40: "Light Screen: halves Special damage received; ignores crits; ends on switching.",
+    0x41: "Reflect: halves Physical damage received; ignores crits; ends on switching.",
+    0x42: "Guaranteed poison on hit (Toxic = badly poison).",
+    0x43: "Guaranteed paralysis on hit; ignores type immunities.",
+    0x44: "May lower Attack by 1 stage (85/256 ≈ 33.20%).",
+    0x45: "May lower Defense by 1 stage (85/256 ≈ 33.20%).",
+    0x46: "May lower Speed by 1 stage (85/256 ≈ 33.20%).",
+    0x47: "May lower Special by 1 stage (85/256 ≈ 33.20%).",
+    0x48: "May lower Accuracy by 1 stage (85/256 ≈ 33.20%).",
+    0x49: "May lower Evasion by 1 stage (85/256 ≈ 33.20%).",
+    0x4A: "(glitched stat lowering thing).",
+    0x4B: "(glitched stat lowering thing).",
+    0x4C: "May confuse the target on hit (26/256 ≈ 10.16%).",
+    0x4D: "May poison on hit (52/256 ≈ 20.31%); hits twice, combined poison chance ≈ 36.50%.",
+    0x4E: "(undefined effect – game crash).",
+    0x4F: "Substitute: create a decoy at cost of 25% max HP (needs ≥ 25%+1 HP). Decoy has 25% max HP; disappears when broken or on switching.",
+    0x50: "Recharge next turn unless it missed, dealt 0 damage, or KOed the target/Substitute.",
+    0x51: "Rage: locks user; each time user (or its Substitute) loses HP from an opponent attack, Attack rises by 1 stage. If this misses, its accuracy becomes ~1.",
+    0x52: "Mimic: copy one selected opposing move, replacing this move until switching/battle end.",
+    0x53: "Metronome: calls a random valid move (except Metronome/Struggle); ignores Disable.",
+    0x54: "Leech Seed: fails on Grass; target loses 1/16 max HP each turn; user's current Pokémon heals that amount (multiplies with Toxic counter).",
+    0x55: "Splash: does nothing.",
+    0x56: "Disable: prevents the target from using a random move.",
+    # 0x57–0xFF are undefined and generally crash:
 }
 
-
-
+@dataclass
 class Move:
-    def __init__(id):
-        pass
+    def __init__(self):
+        self.name = "Unknown"
+        self.id = -1
+        self._effect = -1
+        self.power = -1
+        self._type = -1
+        self._accuracy = -1
+        self.pp = -1
+        return
+    
+    @staticmethod
+    def load_from_id(pyboy, id : int):
+        if id > 0x56:
+            raise ValueError("id must be contained in [0x0:0x56]")
+        
+        select_rom_bank(pyboy,0xE)
+        new_move = Move.load_from_bytes(pyboy.memory[0x4000+(id-1)*6:0x4000+id*6])
+
+        select_rom_bank(pyboy,0x2C)
+        new_move.name = _read_move_name_current_bank(pyboy, new_move.id)
+
+        return new_move
+
+
+    @staticmethod
+    def load_from_bytes(li : list) :
+        new_move = Move()
+        new_move.id = li[0]
+        new_move._effect = li[1]
+        new_move.power = li[2]
+        new_move._type = li[3]
+        new_move._accuracy = li[4]
+        new_move.pp = li[5]
+        return new_move
+
+
+    @property
+    def effect(self):
+        return FUNCTION_CODE_EFFECT.get(self._effect, "(undefined effect – game crash)")
+    
+    @property
+    def type(self):
+        return POKEMON_TYPES.get(self._type, "Unknown")
+
+    @property
+    def accuracy(self):
+        return self._accuracy/255*100
+    
+    def __str__(self):
+        return """
+    "name": {},
+    "id" : {},
+    "effect" : {},
+    "power" : {},
+    "type": {},
+    "accuracy" : {},
+    "pp" : {}
+
+        """.format(self.name,self.id,self.effect,self.power,self.type,self.accuracy,self.pp)
