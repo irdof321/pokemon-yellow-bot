@@ -647,7 +647,7 @@ class PokemonBattleSlot:
     def from_memory(cls, pyboy: 'pyboy.PyBoy', data: MemoryData, is_yellow=True) -> 'Pokemon':
         """Load a Pokémon struct directly from PyBoy memory."""
         
-        fixed = SavedPokemonData.get_pkm_yellow_addresses(data) if is_yellow else data
+        fixed = MemoryData.get_pkm_yellow_addresses(data) if is_yellow else data
         raw_data = list(pyboy.memory[fixed.start_address  : fixed.end_address + 1 ])
         return cls(raw_data, fixed.start_address, pyboy)
 
@@ -749,10 +749,13 @@ class PokemonParty:
     def from_memory(cls, pyboy: 'pyboy.PyBoy', data: MemoryData, is_yellow=True) -> 'PokemonParty':
         """
         Load a Party/Save Pokémon struct directly from PyBoy memory.
-        Uses your SavedPokemonData.get_pkm_yellow_addresses() to correct Yellow shift.
+        Uses your MemoryData.get_pkm_yellow_addresses() to correct Yellow shift.
         """
-        fixed = SavedPokemonData.get_pkm_yellow_addresses(data) if is_yellow else data
+        fixed = MemoryData.get_pkm_yellow_addresses(data) if is_yellow else data
         raw_data = list(pyboy.memory[fixed.start_address : fixed.end_address + 1])
+
+        if not hasattr(cls,"game"):
+            cls.game = MemoryData.game
 
         if data == MainPokemonData.Pokemon1:
             list_to_add = pyboy.memory[MainPokemonData.Nickname1.start_address : MainPokemonData.Nickname1.end_address + 1]
@@ -912,3 +915,78 @@ class PokemonParty:
             f"Status: {', '.join(self.status) if self.status else 'Healthy'}"
         )
 
+
+
+class EnemyPokemon:
+    game: 'pyboy.PyBoy'
+    is_yellow: bool = True
+
+    def __new__(cls):        
+        if not hasattr(cls,"game"):
+            cls.game = MemoryData.game
+        
+        return super().__new__(cls)
+
+
+    # --- internal helpers ---
+    @staticmethod
+    def _fix(md, is_yellow = False):
+        # Apply Yellow HRAM shift ($CF1A -> $FFFE) rule to WRAM addresses
+
+        return MemoryData.get_pkm_yellow_addresses(md) if is_yellow else md
+
+    def _u8(self, md: MemoryData) -> int:
+        f = self._fix(md, self.is_yellow)
+        return int(self.game.memory[f.start_address])
+
+
+
+    # --- core fields ---
+    @property
+    def species_id(self) -> int:
+        return read_u8(self.game.get_data(MainPokemonData.EnemyPokemonID2)
+
+    @property
+    def number(self) -> int:
+        """National Dex number via ROM→Dex mapping."""
+        return POKEMON_ROM_ID_TO_PKDX_ID.get(self.species_id, 0)
+
+    @property
+    def name(self) -> str:
+        return POKDX_ID_TO_NAME.get(self.number, {"en": "Unknown"}).get("en", "Unknown")
+
+    @property
+    def level(self) -> int:
+        return read_u8(self.game.get_data(MainPokemonData.EnemyLevel)
+
+    @property
+    def current_hp(self) -> int:
+        return read_u16(self.game.get_data(MainPokemonData.EnemyHP),[0,2])
+
+    @property
+    def status(self) -> list[str]:
+        return parse_status(read_u8(self.game.get_data(MainPokemonData.EnemyStatus))
+
+    @property
+    def types(self) -> tuple[str, str]:
+        t1_id = read_u8(self.game.get_data(MainPokemonData.EnemyType1)
+        t2_id = read_u8(self.game.get_data(MainPokemonData.EnemyType2)
+        return (
+            POKEMON_TYPES.get(t1_id, "Unknown"),
+            POKEMON_TYPES.get(t2_id, "Unknown"),
+        )
+
+    @property
+    def catch_rate_g2(self) -> int:
+        """Gen1 catch rate (temp); becomes Held Item in Gen2 transfers."""
+        return read_u8(self.game.get_data(MainPokemonData.EnemyCatchRateTmp)
+
+    # --- pretty print ---
+    def __str__(self):
+        t1, t2 = self.types
+        st = self.status
+        return (
+            f"Enemy {self.name} (Dex #{self.number:03d}) | \n"
+            f"L {self.level} | HP {self.current_hp} | \n"
+            f"{t1}/{t2} | Status: {', '.join(st) if st else 'Healthy'}"
+        )

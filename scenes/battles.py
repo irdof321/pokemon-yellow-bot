@@ -1,3 +1,4 @@
+from data.pokemon import PokemonParty, EnemyPokemon
 from data.ram_reader import MainPokemonData
 
 
@@ -160,16 +161,28 @@ class BattleScene:
         pass
 
 class NormalBattle(BattleScene):
-    pass
+    def __init__(self, pyboy):
+        md = MainPokemonData.get_main_pkm_for_party_slot(1)
+        self.player_pokemon_party = PokemonParty.from_memory(pyboy, md, is_yellow=False)
+        self.opponent_pokemon_party = EnemyPokemon()
+        super().__init__()
+
+    def str_print_enemy_PKM(self) -> str:
+        return str(self.opponent_pokemon_party)
+        
+    
 
 class SafariBattle(BattleScene):
     pass
 
+class WildBatlleScene(BattleScene):
+    pass
 
-def get_battle_scene() -> BattleScene:
-    battle_id = MainPokemonData.BattleTypeID
-    if battle_id == 1:
-        return NormalBattle()
+
+def get_battle_scene(pyboy,battle_id) -> BattleScene:
+    
+    if battle_id == 2:
+        return NormalBattle(pyboy)
 
 
 

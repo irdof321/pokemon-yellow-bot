@@ -9,6 +9,7 @@ import pyboy
 class MemoryData:
 
     shift = 0x0  # Offset to apply when reading from WRAM in PyBoy
+    game = None
 
     def __init__(self, start_address, end_address, description=""):
         self.start_address = start_address + self.shift
@@ -24,6 +25,29 @@ class MemoryData:
     @staticmethod
     def set_shift(shift: int):
         MemoryData.shift = shift
+
+    @classmethod
+    def get_pkm_yellow_addresses(cls,data : "MemoryData") -> "MemoryData":
+        """
+        Read a slice of emulator memory, compensating for both:
+          - the global MemoryData.shift used in this project,
+          - and the Yellow-specific -1 byte shift for WRAM addresses >= 0xCF1A.
+        """
+        threshold = cls.game.CF1A + MemoryData.shift
+
+        if cls.game.game_version.is_yellow:
+            shift_start = -1 if data.start_address >= threshold else 0
+            shift_end = -1 if data.end_address >= threshold else 0
+            data = MemoryData(
+                data.start_address + shift_start - MemoryData.shift,
+                data.end_address + shift_end - MemoryData.shift,
+                data.description,
+            )
+        return data
+
+    @classmethod
+    def set_game(cls, game):
+        cls.game  = game
 
 
 class DataType:
@@ -540,6 +564,11 @@ class MainPokemonData(DataType):
     Pokemons_in_box = MemoryData(0xDA96, 0xDD29, "All boxes' Pokémon (14 boxes of 20 Pokémon each = 280 total)")
     Trainer_names_boxes = MemoryData(0xDD2A, 0xDE05, "All boxes' trainer names (11 bytes each, 14 boxes of 20 Pokémon each = 280 total)")
     Nickname_boxes = MemoryData(0xDE06, 0xDEE1, "All boxes' nicknames (11 bytes each, 14 boxes of 20 Pokémon each = 280 total)")
+
+    @staticmethod
+    def get_main_pkm_for_party_slot(slot: int) -> MemoryData:
+        return getattr(MainPokemonData, f"Pokemon{slot}", None)
+
 
 class InternalPokemonData(DataType):
     OamDmaRoutine = MemoryData(0xFF80, 0xFF89, "OAM DMA routine")

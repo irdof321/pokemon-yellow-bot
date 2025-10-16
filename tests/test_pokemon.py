@@ -157,8 +157,6 @@ def nickname_slot_base(i: int) -> int:
     return NICK_BASE_ADDR + (i-1) * NICK_LEN
 
 
-def md_for_party_slot(slot: int) -> MemoryData:
-    return getattr(MainPokemonData, f"Pokemon{slot}", None)
 
 @pytest.mark.skipif(not _has_files(), reason="ROM or state not found locally.")
 def test_party_order_matches_menu_screenshot():
@@ -186,7 +184,7 @@ def test_party_order_matches_menu_screenshot():
 
         for slot, dex, nick, lvl, (hp, hpmax), t1, t2 in expected:
             # 1) Lire le Pokémon Party depuis la RAM
-            md = md_for_party_slot(slot)
+            md = MainPokemonData.get_main_pkm_for_party_slot(slot)
             mon = PokemonParty.from_memory(pyboy, md, is_yellow=is_yellow)
 
             # 3) Asserts
