@@ -223,7 +223,7 @@ class MainPokemonData(DataType):
     # Enemy Pokémon data
     EnemyPokemonID2    = MemoryData(0xCFE5, 0xCFE5, "Enemy's Pokémon internal ID (duplicate)")
     EnemyHP            = MemoryData(0xCFE6, 0xCFE7, "Enemy's HP (2 bytes)")
-    EnemyLevel         = MemoryData(0xCFE8, 0xCFE8, "Enemy's Level")
+    EnemyLevel         = MemoryData(0xCFE8, 0xCFE8, "Enemy's Level DO NOT WORK check --> EnemyLevel2")
     EnemyStatus        = MemoryData(0xCFE9, 0xCFE9, "Enemy's Status (bitfield: 6=Paralyzed,5=Frozen,4=Burned,3=Poisoned,0-2=Sleep counter)")
     EnemyType1         = MemoryData(0xCFEA, 0xCFEA, "Enemy's Type 1")
     EnemyType2         = MemoryData(0xCFEB, 0xCFEB, "Enemy's Type 2")
@@ -240,7 +240,7 @@ class MainPokemonData(DataType):
     EnemyIVsSpdSpc     = MemoryData(0xCFF2, 0xCFF2, "Enemy's Speed and Special IVs")
 
     # Enemy stats
-    EnemyLevel2        = MemoryData(0xCFF3, 0xCFF3, "Enemy's Level (duplicate)")
+    EnemyLevel2        = MemoryData(0xCFF3, 0xCFF3, "Enemy's Level (duplicate) THIS ONE WORK")
     EnemyMaxHP         = MemoryData(0xCFF4, 0xCFF5, "Enemy's Max HP (2 bytes)")
     EnemyAttack        = MemoryData(0xCFF6, 0xCFF7, "Enemy's Attack (2 bytes)")
     EnemyDefense       = MemoryData(0xCFF8, 0xCFF9, "Enemy's Defense (2 bytes)")

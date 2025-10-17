@@ -606,10 +606,10 @@ POKEMON_LAYOUT_PARTY = {
 PARTY_STRUCT_LEN = 44  # bytes
 
 # --- Helpers for decoding ---
-def read_u8(raw: List[int], sl: tuple[int, int]) -> int:
+def read_u8(raw: List[int], sl : tuple[int, int]  = [0]) -> int:
     return raw[sl[0]]
 
-def read_u16(raw: List[int], sl: tuple[int, int]) -> int:
+def read_u16(raw: List[int], sl: tuple[int, int]  = [0,2]) -> int:
     hi, lo = raw[sl[0]:sl[1]]
     return lo | (hi << 8)
 
@@ -622,9 +622,10 @@ def read_list(raw: List[int], sl: tuple[int, int]) -> List[int]:
 def parse_status(b: int) -> List[str]:
     #Only one status can be active at a time in Gen I
     #If it is a sleep status, the 3 first of the mask are used to know what counter it is
-    # it can be from 0 to 7 max turns sleep and 0 means not asleep
+    # it can be from 7 to 0 max turns sleep and 0 means not asleep
+    # A number between 0 and 7 is choosen randomly
     if b & 0b00000111:
-        return [f"Sleep ({b & 0b00000111} turn asleep)"]
+        return [f"Sleep ({7-(b & 0b00000111)}/7)"]
     return [status for bit, status in STATUS_BIT_MASKS.items() if b & bit and bit != 0b00000111]
 
 
@@ -909,9 +910,9 @@ class PokemonParty:
     # --- Pretty-print ---
     def __str__(self):
         return (
-            f"Dex #{self.number:03d} | L{self.level} | "
-            f"HP {self.current_hp}/{self.max_hp} | "
-            f"{self.types[0]}/{self.types[1]} | "
+            f"{self.nickname} (Dex #{self.number:03d}:{self.name} | \n"
+            f"L{self.level} | HP {self.current_hp}/{self.max_hp} | \n"
+            f"{self.types[0]}/{self.types[1]} | \n"
             f"Status: {', '.join(self.status) if self.status else 'Healthy'}"
         )
 
@@ -944,7 +945,7 @@ class EnemyPokemon:
     # --- core fields ---
     @property
     def species_id(self) -> int:
-        return read_u8(self.game.get_data(MainPokemonData.EnemyPokemonID2)
+        return read_u8(self.game.get_data(MainPokemonData.EnemyPokemonID2))
 
     @property
     def number(self) -> int:
@@ -957,20 +958,24 @@ class EnemyPokemon:
 
     @property
     def level(self) -> int:
-        return read_u8(self.game.get_data(MainPokemonData.EnemyLevel)
+        return read_u8(self.game.get_data(MainPokemonData.EnemyLevel2))
 
     @property
     def current_hp(self) -> int:
-        return read_u16(self.game.get_data(MainPokemonData.EnemyHP),[0,2])
+        return read_u16(self.game.get_data(MainPokemonData.EnemyHP))
+    
+    @property
+    def max_hp(self) -> int:
+        return read_u16(self.game.get_data(MainPokemonData.EnemyMaxHP))
 
     @property
     def status(self) -> list[str]:
-        return parse_status(read_u8(self.game.get_data(MainPokemonData.EnemyStatus))
+        return parse_status(read_u8(self.game.get_data(MainPokemonData.EnemyStatus)))
 
     @property
     def types(self) -> tuple[str, str]:
-        t1_id = read_u8(self.game.get_data(MainPokemonData.EnemyType1)
-        t2_id = read_u8(self.game.get_data(MainPokemonData.EnemyType2)
+        t1_id = read_u8(self.game.get_data(MainPokemonData.EnemyType1))
+        t2_id = read_u8(self.game.get_data(MainPokemonData.EnemyType2))
         return (
             POKEMON_TYPES.get(t1_id, "Unknown"),
             POKEMON_TYPES.get(t2_id, "Unknown"),
@@ -979,7 +984,7 @@ class EnemyPokemon:
     @property
     def catch_rate_g2(self) -> int:
         """Gen1 catch rate (temp); becomes Held Item in Gen2 transfers."""
-        return read_u8(self.game.get_data(MainPokemonData.EnemyCatchRateTmp)
+        return read_u8(self.game.get_data(MainPokemonData.EnemyCatchRateTmp))
 
     # --- pretty print ---
     def __str__(self):
@@ -987,6 +992,6 @@ class EnemyPokemon:
         st = self.status
         return (
             f"Enemy {self.name} (Dex #{self.number:03d}) | \n"
-            f"L {self.level} | HP {self.current_hp} | \n"
+            f"L {self.level} | HP {self.current_hp}/{self.max_hp} | \n"
             f"{t1}/{t2} | Status: {', '.join(st) if st else 'Healthy'}"
         )

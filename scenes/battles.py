@@ -1,4 +1,5 @@
-from data.pokemon import PokemonParty, EnemyPokemon
+from dataclasses import dataclass
+from data.pokemon import PokemonParty, EnemyPokemon, read_u8
 from data.ram_reader import MainPokemonData
 
 
@@ -160,15 +161,30 @@ class BattleScene:
     def __init__(self):
         pass
 
+@dataclass
 class NormalBattle(BattleScene):
     def __init__(self, pyboy):
         md = MainPokemonData.get_main_pkm_for_party_slot(1)
         self.player_pokemon_party = PokemonParty.from_memory(pyboy, md, is_yellow=False)
         self.opponent_pokemon_party = EnemyPokemon()
+        self.game = pyboy
         super().__init__()
+
+    @property
+    def battle_turn(self):
+        return read_u8(self.game.get_data(MainPokemonData.BattleTurnCounter))
+
 
     def str_print_enemy_PKM(self) -> str:
         return str(self.opponent_pokemon_party)
+    
+    def __str__(self) -> str:
+        msg = f"\nBattle turn : {self.battle_turn}\n"
+        msg += "---------------------------\n"
+        msg += f"Player Pokemon in Party : \n{self.player_pokemon_party}\n"
+        msg += "---------------------------\n"
+        msg += f"Enemy Pokemon in Party : \n{self.opponent_pokemon_party}"
+        return msg
         
     
 
@@ -179,10 +195,15 @@ class WildBatlleScene(BattleScene):
     pass
 
 
+active_scene = None
+
 def get_battle_scene(pyboy,battle_id) -> BattleScene:
     
     if battle_id == 2:
-        return NormalBattle(pyboy)
+        if active_scene is None:
+            return NormalBattle(pyboy)
+        else:
+            return active_scene
 
 
 

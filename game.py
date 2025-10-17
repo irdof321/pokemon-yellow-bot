@@ -214,7 +214,7 @@ class PokemonGame(PyBoy):
             logger.info(f"It is a battle with id {battle_id}")
 
             self.scene = get_battle_scene(self,battle_id)
-            logger.debug(f"ENEMY POKEMON \n {self.scene.str_print_enemy_PKM()}")
+            logger.debug(f"SCENE\n {self.scene}")
 
         return None
 
