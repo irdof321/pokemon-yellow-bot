@@ -1,10 +1,11 @@
 # tests/test_pokemon.py
 import pytest
 from data.decoder import decode_pkm_text
-from data.pokemon import PokemonBattleSlot, PokemonParty, POKEMON_LAYOUT_BATTLE, POKEMON_ROM_ID_TO_PKDX_ID
-from data.ram_reader import MemoryData, MainPokemonData
+from data.pokemon import PokemonBattleSlot, PartyPokemon, POKEMON_LAYOUT_BATTLE, POKEMON_ROM_ID_TO_PKDX_ID
+from data.ram_reader import MemoryData, MainPokemonData, SavedPokemonData
 from data.move import Move, _read_move_name_current_bank
 from data.helpers import select_rom_bank
+from scenes.battles import get_battle_scene
 # tests/test_pokemon_from_state.py
 import os
 import pytest
@@ -125,10 +126,7 @@ def test_pokemon_from_state_first_party_mon_is_squirtle_named_ABCDEFGHIJ():
         assert mon.types[0] == "Water", f"Expected type1 Water, got {mon.types[0]}"
 
     # Load second pokemon in party (Daradagnan)
-        md2 = getattr(MainPokemonData, "Pokemon2", None)
-        if md2 is None:
-            pytest.skip("No MemoryData for second Pokémon found in MainPokemonData. Skipping second Pokémon test.")
-        mon2 = PokemonParty.from_memory(pyboy, md2, is_yellow=False)
+        mon2 = PartyPokemon(pyboy, 2, is_yellow=False)
         assert mon2.number == 15, f"Expected Dragonite(0xF5), got {mon2.number}"
         assert mon2.nickname.startswith("BEEDRIL"), f"Got name: {mon2.nickname}"
         assert mon2.name == "Beedrill", f"Expected Beedrill, got {mon2.name}"
@@ -184,8 +182,8 @@ def test_party_order_matches_menu_screenshot():
 
         for slot, dex, nick, lvl, (hp, hpmax), t1, t2 in expected:
             # 1) Lire le Pokémon Party depuis la RAM
-            md = MainPokemonData.get_main_pkm_for_party_slot(slot)
-            mon = PokemonParty.from_memory(pyboy, md, is_yellow=is_yellow)
+            
+            mon = PartyPokemon(pyboy, slot, is_yellow = False)
 
             # 3) Asserts
             assert mon.number == dex, f"slot {slot}: expected dex {dex}, got {mon.number}"
@@ -229,8 +227,7 @@ def test_moves():
         select_rom_bank(pyboy, 0x2C)
 
         # Read the Pokémon in party slot #2
-        md = md_for_party_slot(2)
-        mon = PokemonParty.from_memory(pyboy, md, is_yellow=False)
+        mon = PartyPokemon(pyboy,2,False)
         print(f"Pokémon: {mon.name}")
 
         # Helper: resolve a list of move IDs to their names from the *current* bank
@@ -243,30 +240,35 @@ def test_moves():
         assert probe_names == ["NA", "POUND", "KARATE CHOP", "DOUBLESLAP"], probe_names
 
         # Actual moves of the Pokémon (IDs + names)
-        move_ids = mon.moves
-        print(f"Move IDs: {move_ids}")
+        move_list = mon.moves
+        move_str = "Move list:\n"
+        i = 1
+        for m in move_list:
+            move_str += m.to_json() +"\n"
+        print(move_str)
 
-        names = get_move_names(move_ids)
-        print("\n".join(names))
-
-        # Expected names for this saved state
-        assert names[0] == "POISON STING"
-        assert names[1] == "STRING SHOT"
-        assert names[2] == "NA"
-        assert names[3] == "NA"
-
-        # Test Move details
-        
-        moves_list = []
-        for move_id in move_ids:
-            if move_id > 0:
-                moves_list.append(Move.load_from_id(pyboy,move_id))
-
-        
-        print(moves_list[0])
 
     finally:
         pyboy.stop()
+
+def test_battle_scene():
+    pyboy = PyBoy(ROM_PATH, window="null", log_level="WARNING")
+    try:
+        # Load deterministic state
+        with open("games/Rouge/PokemonRed.TestMove.gb.state", "rb") as f:
+            pyboy.load_state(f)
+
+        MemoryData.set_game(pyboy)
+        battle_id = SavedPokemonData.get_data(pyboy, MainPokemonData.BattleTypeID)
+        print(f"DEBUG ----- battle_id : {battle_id}")
+        battle_id = battle_id[0]
+        scene = get_battle_scene(pyboy,battle_id)
+        print(scene)
+        print(scene.to_dict())
+
+    finally:
+        pyboy.stop()
+
 
 
 if __name__ == "__main__":

@@ -33,9 +33,13 @@ class MemoryData:
           - the global MemoryData.shift used in this project,
           - and the Yellow-specific -1 byte shift for WRAM addresses >= 0xCF1A.
         """
-        threshold = cls.game.CF1A + MemoryData.shift
+        if cls.game is None:
+            raise ValueError("No game class set for the memory! Use MemoryData.set_game(game : PyBoy)")
+        threshold = 0xCF1A + MemoryData.shift
 
-        if cls.game.game_version.is_yellow:
+        if not hasattr(cls.game,"game_version"):
+            return data
+        if cls.game.game_version.is_yellow :
             shift_start = -1 if data.start_address >= threshold else 0
             shift_end = -1 if data.end_address >= threshold else 0
             data = MemoryData(

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from data.pokemon import PokemonParty, EnemyPokemon, read_u8
-from data.ram_reader import MainPokemonData
+from data.pokemon import PartyPokemon, EnemyPokemon, read_u8
+from data.ram_reader import MainPokemonData, SavedPokemonData
 
 
 BATTLE_STATUS_LAYOUT = {
@@ -158,21 +158,24 @@ BATTLE_INFO = {
 }
 
 class BattleScene:
-    def __init__(self):
+    def __init__(self,pyboy):
+        self.game = pyboy
         pass
+
+
 
 @dataclass
 class NormalBattle(BattleScene):
     def __init__(self, pyboy):
+        super().__init__(pyboy) 
         md = MainPokemonData.get_main_pkm_for_party_slot(1)
-        self.player_pokemon_party = PokemonParty.from_memory(pyboy, md, is_yellow=False)
-        self.opponent_pokemon_party = EnemyPokemon()
-        self.game = pyboy
+        self.player_pokemon_party = PartyPokemon(pyboy, 1, is_yellow=False)
+        self.opponent_pokemon_party = EnemyPokemon(pyboy)
         super().__init__()
 
     @property
     def battle_turn(self):
-        return read_u8(self.game.get_data(MainPokemonData.BattleTurnCounter))
+        return read_u8(SavedPokemonData.get_data(self.game,MainPokemonData.BattleTurnCounter))
 
 
     def str_print_enemy_PKM(self) -> str:
@@ -185,6 +188,14 @@ class NormalBattle(BattleScene):
         msg += "---------------------------\n"
         msg += f"Enemy Pokemon in Party : \n{self.opponent_pokemon_party}"
         return msg
+    
+    def to_dict(self):
+        return {
+            "ennemyPKM" : self.opponent_pokemon_party.to_dict(),
+            "playerPKM" : self.player_pokemon_party.to_dict(),
+            "battle_turn" : self.battle_turn 
+        }
+    
         
     
 
@@ -199,7 +210,7 @@ active_scene = None
 
 def get_battle_scene(pyboy,battle_id) -> BattleScene:
     
-    if battle_id == 2:
+    if battle_id in [1,2]:
         if active_scene is None:
             return NormalBattle(pyboy)
         else:
