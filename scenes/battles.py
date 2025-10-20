@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from threading import Thread
+from time import sleep
 from data.pokemon import PartyPokemon, EnemyPokemon, read_u8
 from data.ram_reader import MainPokemonData, SavedPokemonData
 
@@ -158,11 +160,60 @@ BATTLE_INFO = {
 }
 
 class BattleScene:
+    game = None
+
     def __init__(self,pyboy):
-        self.game = pyboy
-        pass
+        BattleScene.game = pyboy
+        
 
+    def use_move_1(self):
+        Thread(target=BattleScene._use_move_1).start()
 
+    def use_move_2(self):
+        Thread(target=BattleScene._use_move_2).start()
+        
+    def use_move_3(self):
+        Thread(target=BattleScene._use_move_3).start()
+        
+    def use_move_4(self):
+        Thread(target=BattleScene._use_move_4).start()
+
+    @staticmethod
+    def _use_move_1():
+        BattleScene.game.button('a')
+        sleep(0.5)
+        BattleScene.game.button('a')
+
+    @staticmethod
+    def _use_move_2():
+        BattleScene.game.button('a')
+        sleep(0.5)
+        BattleScene.game.button('down')
+        sleep(0.5)
+        BattleScene.game.button('a')
+
+    @staticmethod
+    def _use_move_3():
+        BattleScene.game.button('a')
+        sleep(0.5)
+        BattleScene.game.button('down')
+        sleep(0.5)
+        BattleScene.game.button('down')
+        sleep(0.5)
+        BattleScene.game.button('a')
+
+    @staticmethod
+    def _use_move_4():
+        BattleScene.game.button('a')
+        sleep(0.5)
+        BattleScene.game.button('down')
+        sleep(0.5)
+        BattleScene.game.button('down')
+        sleep(0.5)
+        BattleScene.game.button('down')
+        sleep(0.5)
+        BattleScene.game.button('a')
+        
 
 @dataclass
 class NormalBattle(BattleScene):
@@ -171,7 +222,7 @@ class NormalBattle(BattleScene):
         md = MainPokemonData.get_main_pkm_for_party_slot(1)
         self.player_pokemon_party = PartyPokemon(pyboy, 1, is_yellow=False)
         self.opponent_pokemon_party = EnemyPokemon(pyboy)
-        super().__init__()
+        super().__init__(pyboy)
 
     @property
     def battle_turn(self):

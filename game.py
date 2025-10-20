@@ -1,6 +1,8 @@
 import os
+import threading
 import time
 from enum import Enum, auto
+from collections import deque
 
 from pyboy import PyBoy
 from loguru import logger
@@ -22,8 +24,21 @@ logger.add(
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
-_AUTOSAVE_INTERVAL_SEC = 10  # Interval for autosaving the emulator state (seconds)
+_AUTOSAVE_INTERVAL_SEC = 10
+_SCENE_POLL_SEC = 0.10      # Check the scene only 10 times per second
+_LOG_THROTTLE_SEC = 1.0     # Avoid spamming exception logs
 
+class GBAButton(str, Enum):
+    A = "a"
+    B = "b"
+    START = "start"
+    SELECT = "select"
+    UP = "up"
+    DOWN = "down"
+    LEFT = "left"
+    RIGHT = "right"
+    L = "l"
+    R = "r"
 
 class GameVersion(Enum):
     """Supported Pokémon game versions."""
@@ -103,23 +118,24 @@ class PokemonGame(PyBoy):
         MemoryData.set_game(self)
         self.rom_name = rom_path
         self.is_running = False
+        self.btn_event_list = deque([])
+
+    def button(self,btn : GBAButton):
+        self.btn_event_list.append(btn)
 
     def start(self, file_save_state: str = "") -> None:
         """
         Start the emulator loop.
-
-        - Loads a save state if provided or if a default .state file is present.
-        - Optionally asks the user whether to load the default save state.
-        - Periodically logs Pokémon info every 60s (if MemoryData is configured).
-        - Autosaves the game state every 60s.
+        - Loads an existing save state (if found)
+        - Periodically autosaves and polls the battle scene
+        - Runs everything in a single thread for performance
         """
-        # Resolve save-state path
+        # --- Load save state (same as your code) ---
         if file_save_state != "":
             self.save_state_path = file_save_state
         else:
             self.save_state_path = f"{self.rom_name}.state"
 
-        # Load an existing save state, or ask the user if one isn't found
         if self.save_state_path and os.path.exists(self.save_state_path):
             try:
                 with open(self.save_state_path, "rb") as f:
@@ -129,8 +145,8 @@ class PokemonGame(PyBoy):
                 logger.exception("Failed to load the save state.")
         else:
             try:
-                load_data = input("Load save state? (y/n): ").strip().lower()
-                if load_data == "y":
+                choice = input("Load save state? (y/n): ").strip().lower()
+                if choice == "y":
                     default_state = f"{self.rom_name}.state"
                     if os.path.exists(default_state):
                         with open(default_state, "rb") as f:
@@ -141,54 +157,80 @@ class PokemonGame(PyBoy):
             except Exception:
                 logger.exception("Failed during save-state prompt or load.")
 
-        # Optionally start a background thread to autosave (kept commented as in original)
-        # threading.Thread(target=self.auto_save, daemon=True).start()
-
-        start_time = time.time()
-
-        # --- Start periodic Pokémon logger every 60s ---
-        try:
-            # Choose a MemoryData entry for the first Pokémon in battle/saved context.
-            # Falls back if a specific name does not exist in your ram_reader.
-            md = getattr(SavedPokemonData, "Pokemon1SlotBattle", None) or getattr(
-                SavedPokemonData, "Pokemon1", None
-            )
-
-            if md is None:
-                logger.warning(
-                    "No MemoryData for first Pokémon found in SavedPokemonData. Skipping periodic Pokémon logger."
-                )
-            else:
-                SavedPokemonData.start_pokemon_logger(self, md, interval_sec=60)
-                logger.info("Started periodic Pokémon logger (every 60s).")
-        except Exception as e:
-            logger.exception(f"Failed to start periodic Pokémon logger: {e}")
+        # --- Timing setup ---
+        now = time.monotonic()
+        next_save_at = now + _AUTOSAVE_INTERVAL_SEC
+        next_scene_at = now + _SCENE_POLL_SEC
+        next_log_ok = now + _LOG_THROTTLE_SEC
 
         # --- Main emulator loop ---
-        try:
-            while True:
-                self.is_running = self.tick()
-                if not self.is_running:
-                    logger.info("Emulator stopped running.")
-                    break
+        while True:
+            # 1) Advance the emulator (no background PyBoy access)
+            self.is_running = self.tick()
+            if len(self.btn_event_list) > 0:
+                logger.debug(f"BTN list : {self.btn_event_list}")
+                super().button(self.btn_event_list.popleft())
+            if not self.is_running:
+                logger.info("Emulator stopped running.")
+                break
 
+            now = time.monotonic()
+
+            # 2) Periodic autosave
+            if now >= next_save_at:
+                try:
+                    logger.debug("Saving game state ...")
+                    with open(self.save_state_path, "wb") as f:
+                        self.save_state(f)
+                    logger.info("Game state saved.")
+                except Exception:
+                    logger.exception("Failed to autosave the game state.")
+                finally:
+                    next_save_at = now + _AUTOSAVE_INTERVAL_SEC
+
+            # 3) Periodic scene check (no need to do it every frame)
+            if now >= next_scene_at:
+                try:
+                    self._poll_scene_once()
+                except Exception:
+                    if now >= next_log_ok:
+                        logger.exception("Error while polling scene.")
+                        next_log_ok = now + _LOG_THROTTLE_SEC
+                finally:
+                    next_scene_at = now + _SCENE_POLL_SEC
+
+            # Optional: tiny sleep if CPU load is too high
+            # time.sleep(0.001)
+
+
+    def _poll_scene_once(self) -> None:
+        """Read battle state occasionally. Must only run in the main thread."""
+        battle_id_bytes = self.get_data(MainPokemonData.BattleTypeID)
+        if not battle_id_bytes:
+            return
+        battle_id = battle_id_bytes[0]
+
+        if battle_id > 0:
+            if not hasattr(self, "_in_battle") or not self._in_battle:
+                logger.info(f"Battle started with ID {battle_id}")
+                self._in_battle = True
+                self._pressed_btn = False
+
+            if not hasattr(self, "scene") or self.scene is None:
+                self.scene = get_battle_scene(self, battle_id)
+
+            if not getattr(self, "_pressed_btn", False):
+                self.scene.use_move_4()
+                logger.debug("Move 4 selected.")
+                self._pressed_btn = True
+
+        else:
+            if getattr(self, "_in_battle", False):
+                logger.info("Battle ended.")
+            self._in_battle = False
+            self._pressed_btn = False
+            self.scene = None
                 
-
-                # Autosave at fixed interval
-                if time.time() - start_time > _AUTOSAVE_INTERVAL_SEC:
-                    try:
-                        with open(self.save_state_path, "wb") as f:
-                            self.save_state(f)
-                        logger.info("Game state saved")
-                        self.get_scene()
-                    except Exception:
-                        logger.exception("Failed to autosave the game state.")
-                    finally:
-                        start_time = time.time()
-        except KeyboardInterrupt:
-            logger.info("Received KeyboardInterrupt, exiting main loop.")
-        except Exception:
-            logger.exception("Unexpected error in the main loop.")
 
     def get_data(self, elem: MemoryData) -> bytes:
         """
@@ -206,7 +248,9 @@ class PokemonGame(PyBoy):
         1 --> wild Pokemon
         2 --> rival/ normal battle
         """
-        
+        if not hasattr(self,"pressed_btn"):
+            self.pressed_btn = False
+
         battle_id = self.get_data(MainPokemonData.BattleTypeID)
         logger.debug(f"DEBUG ----- battle_id : {battle_id}")
         battle_id = battle_id[0]
@@ -216,10 +260,15 @@ class PokemonGame(PyBoy):
             self.scene = get_battle_scene(self,battle_id)
             logger.debug(f"SCENE\n {self.scene}")
 
+            if not self.pressed_btn:
+                self.scene.use_move_4()
+                logger.debug("Move 1 selected")
+                self.pressed_btn = True
+
         return None
 
 
 if __name__ == "__main__":
     game = PokemonGame.get_game()
-    #game.start()
-    game.start(file_save_state="games/Rouge/PokemonRed.TestMove.gb.state")
+    game.start()
+    # game.start(file_save_state="games/Rouge/PokemonRouge.Carabaffe.gb.state")
