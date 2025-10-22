@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from threading import Thread
 from time import sleep
+from data.data import GBAButton
 from data.pokemon import PartyPokemon, EnemyPokemon, read_u8
 from data.ram_reader import MainPokemonData, SavedPokemonData
 
@@ -167,52 +168,28 @@ class BattleScene:
         
 
     def use_move_1(self):
-        Thread(target=BattleScene._use_move_1).start()
+        BattleScene.game.button(GBAButton.A)
+        BattleScene.game.button(GBAButton.A)
 
     def use_move_2(self):
-        Thread(target=BattleScene._use_move_2).start()
+        BattleScene.game.button(GBAButton.A)
+        BattleScene.game.button(GBAButton.DOWN)
+        BattleScene.game.button(GBAButton.A)
         
     def use_move_3(self):
-        Thread(target=BattleScene._use_move_3).start()
+        BattleScene.game.button(GBAButton.A)
+        BattleScene.game.button(GBAButton.DOWN)
+        BattleScene.game.button(GBAButton.DOWN)
+        BattleScene.game.button(GBAButton.A)
         
     def use_move_4(self):
-        Thread(target=BattleScene._use_move_4).start()
+        BattleScene.game.button(GBAButton.A)
+        BattleScene.game.button(GBAButton.DOWN)
+        BattleScene.game.button(GBAButton.DOWN)
+        BattleScene.game.button(GBAButton.DOWN)
+        BattleScene.game.button(GBAButton.A)
 
-    @staticmethod
-    def _use_move_1():
-        BattleScene.game.button('a')
-        sleep(0.5)
-        BattleScene.game.button('a')
 
-    @staticmethod
-    def _use_move_2():
-        BattleScene.game.button('a')
-        sleep(0.5)
-        BattleScene.game.button('down')
-        sleep(0.5)
-        BattleScene.game.button('a')
-
-    @staticmethod
-    def _use_move_3():
-        BattleScene.game.button('a')
-        sleep(0.5)
-        BattleScene.game.button('down')
-        sleep(0.5)
-        BattleScene.game.button('down')
-        sleep(0.5)
-        BattleScene.game.button('a')
-
-    @staticmethod
-    def _use_move_4():
-        BattleScene.game.button('a')
-        sleep(0.5)
-        BattleScene.game.button('down')
-        sleep(0.5)
-        BattleScene.game.button('down')
-        sleep(0.5)
-        BattleScene.game.button('down')
-        sleep(0.5)
-        BattleScene.game.button('a')
         
 
 @dataclass

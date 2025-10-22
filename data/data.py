@@ -1,4 +1,7 @@
 # --- Pokémon types (Gen I) ---
+from enum import Enum
+
+
 POKEMON_TYPES = {
     0: "Normal",
     1: "Fighting",
@@ -599,3 +602,17 @@ FUNCTION_CODE_EFFECT = {
     0x56: "Disable: prevents the target from using a random move.",
     # 0x57–0xFF are undefined and generally crash:
 }
+
+
+class GBAButton(str, Enum):
+    A = "a"
+    B = "b"
+    START = "start"
+    SELECT = "select"
+    UP = "up"
+    DOWN = "down"
+    LEFT = "left"
+    RIGHT = "right"
+    L = "l"
+    R = "r"
+    PASS  = "pass"

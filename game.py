@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 import time
@@ -7,8 +8,11 @@ from collections import deque
 from pyboy import PyBoy
 from loguru import logger
 
+from data.data import GBAButton
 from data.ram_reader import MemoryData, SavedPokemonData, MainPokemonData
 from scenes.battles import get_battle_scene
+
+from helpers.mqtt import mqttc, publish,start_mqttc
 # -----------------------------------------------------------------------------
 # Logging setup
 # -----------------------------------------------------------------------------
@@ -24,21 +28,30 @@ logger.add(
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
-_AUTOSAVE_INTERVAL_SEC = 10
-_SCENE_POLL_SEC = 0.10      # Check the scene only 10 times per second
+_AUTOSAVE_INTERVAL_SEC = 10000
+_SCENE_POLL_SEC = 3.10      # Check the scene only 10 times per second
 _LOG_THROTTLE_SEC = 1.0     # Avoid spamming exception logs
+_BTN_POP_COOLDOWN = 0.5  # seconds
 
-class GBAButton(str, Enum):
-    A = "a"
-    B = "b"
-    START = "start"
-    SELECT = "select"
-    UP = "up"
-    DOWN = "down"
-    LEFT = "left"
-    RIGHT = "right"
-    L = "l"
-    R = "r"
+class GameQueue:
+    def __init__(self):
+        self.queue = deque()
+        self.lock = threading.Lock()
+
+    def append(self, item):
+        with self.lock:
+            self.queue.append(item)
+
+    def pop(self):
+        with self.lock:
+            if self.queue:
+                return self.queue.popleft()
+            
+    def size(self) -> int :
+        return len(self.queue)
+    
+    def __str__(self) -> str:
+        return "[" + ",".join(str(elem) for elem in self.queue) + "]"
 
 class GameVersion(Enum):
     """Supported Pokémon game versions."""
@@ -91,8 +104,7 @@ class PokemonGame(PyBoy):
         The function also sets the MemoryData global shift expected by the project.
         """
         path = ""
-        while input_choice.lower() not in PokemonGame.CHOICES:
-            input_choice = input("Choose your game Pokémon Red (r), Blue (b) or Yellow (y): ").strip()
+        while True:
             if input_choice.lower() in ["r", "red"]:
                 input_choice = "red"
                 MemoryData.set_shift(0x0)
@@ -106,7 +118,9 @@ class PokemonGame(PyBoy):
                 MemoryData.set_shift(0x4)
                 path = "games/PokemonJaune.gb"
             else:
-                print("Invalid choice. Please try again.")
+                input_choice = input("Choose your game Pokémon Red (r), Blue (b) or Yellow (y): ").strip()
+            if input_choice.lower()  in PokemonGame.CHOICES:
+                break
 
         return PokemonGame(path, window="SDL2", log_level="INFO")
 
@@ -118,7 +132,7 @@ class PokemonGame(PyBoy):
         MemoryData.set_game(self)
         self.rom_name = rom_path
         self.is_running = False
-        self.btn_event_list = deque([])
+        self.btn_event_list = GameQueue()
 
     def button(self,btn : GBAButton):
         self.btn_event_list.append(btn)
@@ -162,21 +176,33 @@ class PokemonGame(PyBoy):
         next_save_at = now + _AUTOSAVE_INTERVAL_SEC
         next_scene_at = now + _SCENE_POLL_SEC
         next_log_ok = now + _LOG_THROTTLE_SEC
+        last_btn_pop_at = 0.0  # allow immediate first pop
 
+
+        #MQTT subscription
+        start_mqttc(logger, host="localhost", port=1883)
+        
         # --- Main emulator loop ---
         while True:
-            # 1) Advance the emulator (no background PyBoy access)
+            # 1) Advance the emulator
             self.is_running = self.tick()
-            if len(self.btn_event_list) > 0:
+
+            # Compute 'now' once per loop; reuse below
+            now = time.monotonic()
+
+            # 1b) Pop a game button only if: (a) queue not empty AND (b) >= 0.5s since last pop
+            if self.btn_event_list.size() > 0 and (now - last_btn_pop_at) >= _BTN_POP_COOLDOWN:
                 logger.debug(f"BTN list : {self.btn_event_list}")
-                super().button(self.btn_event_list.popleft())
+                btn = self.btn_event_list.pop()
+                if btn != GBAButton.PASS:
+                    super().button(btn.value)
+                last_btn_pop_at = now
+
             if not self.is_running:
                 logger.info("Emulator stopped running.")
                 break
 
-            now = time.monotonic()
-
-            # 2) Periodic autosave
+            # 2) Autosave
             if now >= next_save_at:
                 try:
                     logger.debug("Saving game state ...")
@@ -188,7 +214,7 @@ class PokemonGame(PyBoy):
                 finally:
                     next_save_at = now + _AUTOSAVE_INTERVAL_SEC
 
-            # 3) Periodic scene check (no need to do it every frame)
+            # 3) Scene poll
             if now >= next_scene_at:
                 try:
                     self._poll_scene_once()
@@ -199,9 +225,12 @@ class PokemonGame(PyBoy):
                 finally:
                     next_scene_at = now + _SCENE_POLL_SEC
 
-            # Optional: tiny sleep if CPU load is too high
-            # time.sleep(0.001)
 
+    def get_scene(self):
+        if self.scene:
+            return self.scene
+        else:
+            return None
 
     def _poll_scene_once(self) -> None:
         """Read battle state occasionally. Must only run in the main thread."""
@@ -214,16 +243,26 @@ class PokemonGame(PyBoy):
             if not hasattr(self, "_in_battle") or not self._in_battle:
                 logger.info(f"Battle started with ID {battle_id}")
                 self._in_battle = True
-                self._pressed_btn = False
 
             if not hasattr(self, "scene") or self.scene is None:
                 self.scene = get_battle_scene(self, battle_id)
+                
+            # Publish battle info as JSON
+            payload = {
+                "battle": str(self.scene)
+            }
+            try:
+                publish("/battle", {
+                    "battle_id": battle_id,
+                    "turn": self.scene.battle_turn,
+                    "timestamp": time.time(),
+                    "scene" : self.scene.to_dict()
+                })
+            except Exception as e:
+                logger.error(f"Failed to publish MQTT message: {e}")
 
-            if not getattr(self, "_pressed_btn", False):
-                self.scene.use_move_4()
-                logger.debug("Move 4 selected.")
-                self._pressed_btn = True
-
+            self.simulation_test()
+            logger.info(f"Battle turn : {self.scene.battle_turn}")
         else:
             if getattr(self, "_in_battle", False):
                 logger.info("Battle ended.")
@@ -231,6 +270,11 @@ class PokemonGame(PyBoy):
             self._pressed_btn = False
             self.scene = None
                 
+    def simulation_test(self):
+        if not getattr(self, "_pressed_btn", False):
+            self.scene.use_move_2()
+            logger.debug("Move 4 selected.")
+            self._pressed_btn = True
 
     def get_data(self, elem: MemoryData) -> bytes:
         """
@@ -241,34 +285,17 @@ class PokemonGame(PyBoy):
         elem = MemoryData.get_pkm_yellow_addresses(elem)
         return SavedPokemonData.get_data(self, elem)
 
-    def get_scene(self) -> str:
-        """
-        Return the current battle type ID as a string (for quick logging/printing).
-        0 --> no battle
-        1 --> wild Pokemon
-        2 --> rival/ normal battle
-        """
-        if not hasattr(self,"pressed_btn"):
-            self.pressed_btn = False
 
-        battle_id = self.get_data(MainPokemonData.BattleTypeID)
-        logger.debug(f"DEBUG ----- battle_id : {battle_id}")
-        battle_id = battle_id[0]
-        if battle_id > 0:
-            logger.info(f"It is a battle with id {battle_id}")
 
-            self.scene = get_battle_scene(self,battle_id)
-            logger.debug(f"SCENE\n {self.scene}")
 
-            if not self.pressed_btn:
-                self.scene.use_move_4()
-                logger.debug("Move 1 selected")
-                self.pressed_btn = True
 
-        return None
 
+
+async def get_battle():
+    scene = game.get_scene()
+    return {"scene": str(scene) if scene else None}
 
 if __name__ == "__main__":
-    game = PokemonGame.get_game()
+    game = PokemonGame.get_game("red")
     game.start()
     # game.start(file_save_state="games/Rouge/PokemonRouge.Carabaffe.gb.state")
