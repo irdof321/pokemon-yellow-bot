@@ -179,7 +179,7 @@ def stop_client(client: mqtt.Client) -> None:
     """Gracefully stop the client and disconnect."""
     try:
         client.loop_stop()
-        client.disconnect()
+       # client.disconnect()
     except Exception as e:
         client.logger.exception(f"[MQTT] Stop error: {e}")
 

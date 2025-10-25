@@ -4,6 +4,7 @@ import threading
 import time
 from enum import Enum, auto
 from collections import deque
+import uuid
 
 from pyboy import PyBoy
 from loguru import logger
@@ -12,7 +13,7 @@ from data.data import GBAButton
 from data.ram_reader import MemoryData, SavedPokemonData, MainPokemonData
 from scenes.battles import get_battle_scene
 
-from helpers.mqtt import mqttc, publish,start_mqttc
+from helpers.mqtt import get_global, start_global, publish
 # -----------------------------------------------------------------------------
 # Logging setup
 # -----------------------------------------------------------------------------
@@ -32,6 +33,9 @@ _AUTOSAVE_INTERVAL_SEC = 10000
 _SCENE_POLL_SEC = 3.10      # Check the scene only 10 times per second
 _LOG_THROTTLE_SEC = 1.0     # Avoid spamming exception logs
 _BTN_POP_COOLDOWN = 0.5  # seconds
+
+BASE_TOPIC = f"/{uuid.uuid4().hex[:6]}/PKM/"
+BATTLE_TOPIC = BASE_TOPIC +"battle"
 
 class GameQueue:
     def __init__(self):
@@ -180,7 +184,15 @@ class PokemonGame(PyBoy):
 
 
         #MQTT subscription
-        start_mqttc(logger, host="localhost", port=1883)
+        start_global(
+                logger=logger,
+                host="test.mosquitto.org",
+                port=1883,
+                use_tls=False,
+                use_websocket=False,
+                lwt={"topic": f"{BASE_TOPIC}/status", "payload": "offline", "qos": 0, "retain": True},
+            )
+        publish(get_global(), f"{BASE_TOPIC}/start", {"msg": "hello from PKM"}, qos=0, retain=False)
         
         # --- Main emulator loop ---
         while True:
@@ -252,12 +264,18 @@ class PokemonGame(PyBoy):
                 "battle": str(self.scene)
             }
             try:
-                publish("/battle", {
-                    "battle_id": battle_id,
-                    "turn": self.scene.battle_turn,
-                    "timestamp": time.time(),
-                    "scene" : self.scene.to_dict()
-                })
+                publish(
+                    get_global(),
+                    BATTLE_TOPIC,
+                    {
+                        "battle_id": battle_id,
+                        "turn": self.scene.battle_turn,
+                        "timestamp": time.time(),
+                        "scene" : self.scene.to_dict()
+                    },
+                    qos=0,
+                    retain=False
+                )
             except Exception as e:
                 logger.error(f"Failed to publish MQTT message: {e}")
 

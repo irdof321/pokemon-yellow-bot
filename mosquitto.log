@@ -3,3 +3,6 @@
 1761125429: Opening ipv6 listen socket on port 1883.
 1761125429: Opening ipv4 listen socket on port 1883.
 1761125429: mosquitto version 2.0.22 running
+1761127230: Saving in-memory database to mosquitto_data/\mosquitto.db.
+1761127230: Error saving in-memory database, unable to open mosquitto_data/\mosquitto.db.new for writing.
+1761127230: Error: Bad file descriptor.
