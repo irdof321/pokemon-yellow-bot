@@ -218,6 +218,7 @@ class NormalBattle(BattleScene):
         return msg
     
     def to_dict(self):
+        # Choose the correct bank
         return {
             "ennemyPKM" : self.opponent_pokemon_party.to_dict(),
             "playerPKM" : self.player_pokemon_party.to_dict(),
