@@ -197,7 +197,11 @@ class NormalBattle(BattleScene):
     def __init__(self, pyboy):
         super().__init__(pyboy) 
         md = MainPokemonData.get_main_pkm_for_party_slot(1)
-        self.player_pokemon_party = PartyPokemon(pyboy, 1, is_yellow=False)
+        raise ValueError("TO DO ")
+        # Here the problem is that the PArtyPokemon are the list of the pokemon in order as it is in the game
+        # So the 1st is not the one currently in the battle, check the other adress to get it
+        self.player_pokemons_party = PartyPokemon(pyboy, 1, is_yellow=False)
+        self.player_pokemon_battle
         self.opponent_pokemon_party = EnemyPokemon(pyboy)
         super().__init__(pyboy)
 
@@ -212,7 +216,7 @@ class NormalBattle(BattleScene):
     def __str__(self) -> str:
         msg = f"\nBattle turn : {self.battle_turn}\n"
         msg += "---------------------------\n"
-        msg += f"Player Pokemon in Party : \n{self.player_pokemon_party}\n"
+        msg += f"Player Pokemon in Party : \n{self.player_pokemons_party}\n"
         msg += "---------------------------\n"
         msg += f"Enemy Pokemon in Party : \n{self.opponent_pokemon_party}"
         return msg
@@ -221,7 +225,7 @@ class NormalBattle(BattleScene):
         # Choose the correct bank
         return {
             "ennemyPKM" : self.opponent_pokemon_party.to_dict(),
-            "playerPKM" : self.player_pokemon_party.to_dict(),
+            "playerPKM" : self.player_pokemons_party.to_dict(),
             "battle_turn" : self.battle_turn 
         }
     

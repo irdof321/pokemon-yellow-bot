@@ -435,7 +435,7 @@ class PartyPokemon(Pokemon):
     @property
     def moves(self) -> List[int]:
         # 4 octets, ids de moves        
-        move_ids = read_list(self._rb("moves"), (0, 4))
+        move_ids = (self._rb("moves"), (0, 4))
         move_list = []
         
         for id, pp in zip(move_ids,self.pp) :

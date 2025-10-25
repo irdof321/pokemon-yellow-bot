@@ -246,6 +246,7 @@ class PokemonGame(PyBoy):
 
     def _poll_scene_once(self) -> None:
         """Read battle state occasionally. Must only run in the main thread."""
+        return
         battle_id_bytes = self.get_data(MainPokemonData.BattleTypeID)
         if not battle_id_bytes:
             return
