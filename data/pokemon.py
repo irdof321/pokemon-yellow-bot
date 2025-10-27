@@ -3,6 +3,7 @@ import pyboy
 from dataclasses import dataclass
 from typing import Any, ClassVar, List, Dict, Literal, Optional, Tuple
 from data.decoder import decode_pkm_text
+from data.helpers import read_list, read_str_from_md, read_u16, read_u8
 from data.ram_reader import MainPokemonData, MemoryData
 from data.move import Move
 from data.data import POKDX_ID_TO_NAME, POKEMON_ROM_ID_TO_PKDX_ID, POKEMON_TYPES
@@ -102,19 +103,7 @@ POKEMON_LAYOUT_PARTY = {
 }
 PARTY_STRUCT_LEN = 44  # bytes
 
-# --- Helpers for decoding ---
-def read_u8(raw: List[int], sl : tuple[int, int]  = [0]) -> int:
-    return raw[sl[0]]
 
-def read_u16(raw: List[int], sl: tuple[int, int]  = [0,2]) -> int:
-    hi, lo = raw[sl[0]:sl[1]]
-    return lo | (hi << 8)
-
-def read_str(raw: List[int], sl: tuple[int, int]) -> str:
-    return decode_pkm_text(raw[sl[0]:sl[1]], stop_at_terminator=True)
-
-def read_list(raw: List[int], sl: tuple[int, int]) -> List[int]:
-    return raw[sl[0]:sl[1]]
 
 def parse_status(b: int) -> List[str]:
     #Only one status can be active at a time in Gen I
@@ -134,108 +123,7 @@ def parse_dvs(b1: int, b2: int) -> Dict[str, int]:
         "special": b2 & 0xF,
     }
 
-# --- Pokémon wrapper class ---
-@dataclass
-class PokemonBattleSlot:
-    raw: List[int]
-    memory_address: int
-    pyboy: 'pyboy.PyBoy'
 
-    @classmethod
-    def from_memory(cls, pyboy: 'pyboy.PyBoy', data: MemoryData, is_yellow=True) -> 'Pokemon':
-        """Load a Pokémon struct directly from PyBoy memory."""
-        
-        fixed = MemoryData.get_pkm_yellow_addresses(data) if is_yellow else data
-        raw_data = list(pyboy.memory[fixed.start_address  : fixed.end_address + 1 ])
-        return cls(raw_data, fixed.start_address, pyboy)
-
-    # --- Properties ---
-    @property
-    def nickname(self) -> str:
-        return read_str(self.raw, POKEMON_LAYOUT_BATTLE["name"])
-
-    @property
-    def name(self) -> str:
-        # pokedex name, not nickname
-        return POKDX_ID_TO_NAME.get(self.number, {"en": "Unknown", "fr": "Inconnu"})["en"]
-    
-    @property
-    def number(self) -> int:
-        return POKEMON_ROM_ID_TO_PKDX_ID[read_u8(self.raw, POKEMON_LAYOUT_BATTLE["number"])]
-
-    @property
-    def current_hp(self) -> int:
-        return read_u16(self.raw, POKEMON_LAYOUT_BATTLE["current_hp"])
-
-    @property
-    def max_hp(self) -> int:
-        return read_u16(self.raw, POKEMON_LAYOUT_BATTLE["max_hp"])
-
-    @property
-    def level(self) -> int:
-        return read_u8(self.raw, POKEMON_LAYOUT_BATTLE["level"])
-
-    @property
-    def status(self) -> List[str]:
-        return parse_status(read_u8(self.raw, POKEMON_LAYOUT_BATTLE["status"]))
-
-    @property
-    def types(self) -> tuple[str, str]:
-        t1 = POKEMON_TYPES.get(read_u8(self.raw, POKEMON_LAYOUT_BATTLE["type1"]), "Unknown")
-        t2 = POKEMON_TYPES.get(read_u8(self.raw, POKEMON_LAYOUT_BATTLE["type2"]), "Unknown")
-        return (t1, t2)
-
-    @property
-    def moves(self) -> List[int]:
-        return read_list(self.raw, POKEMON_LAYOUT_BATTLE["moves"])
-
-    @property
-    def pp(self) -> List[int]:
-        return read_list(self.raw, POKEMON_LAYOUT_BATTLE["pp"])
-
-    @property
-    def dvs(self) -> Dict[str, int]:
-        b1, b2 = self.raw[23], self.raw[24]
-        return parse_dvs(b1, b2)
-
-    @property
-    def attack(self) -> int:
-        return read_u16(self.raw, POKEMON_LAYOUT_BATTLE["attack"])
-
-    @property
-    def defense(self) -> int:
-        return read_u16(self.raw, POKEMON_LAYOUT_BATTLE["defense"])
-
-    @property
-    def speed(self) -> int:
-        return read_u16(self.raw, POKEMON_LAYOUT_BATTLE["speed"])
-
-    @property
-    def special(self) -> int:
-        return read_u16(self.raw, POKEMON_LAYOUT_BATTLE["special"])
-
-    # --- Setters (write directly to WRAM) ---
-    def set_level(self, new_level: int):
-        self.pyboy.memory[self.memory_address + 0x5 + 25-1] = new_level
-        self._reload_memory()
-
-    def _reload_memory(self):
-        shift = 0x5
-        self.raw = list(self.pyboy.memory[self.memory_address + shift : self.memory_address + shift + len(self.raw)])
-
-    # --- Pretty-print ---
-    def __str__(self):
-        return (
-            f"Name: {self.name}, "
-            f"Level: {self.level}, "
-            f"HP: {self.current_hp}/{self.max_hp}, "
-            f"Type: {self.types[0]}/{self.types[1]}, "
-            f"Status: {', '.join(self.status) if self.status else 'Healthy'}"
-        )
-    
-
-
-# --- Adaptateur mémoire Yellow-safe ------------------------------------------
 
 @dataclass
 class MemAdapter:
@@ -276,6 +164,10 @@ class MemAdapter:
 class Pokemon(ABC):
     # attribut de classe optionnel si tu veux y mettre un handle global
     game: ClassVar[Optional['pyboy.PyBoy']] = None
+
+    # Local helpers
+    def _u8(self, md: 'MemoryData') -> int:  return self.mem.read_u8(md)
+    def _u16(self, md: 'MemoryData') -> int: return self.mem.read_u16(md)
 
     def __init__(self, pyboy: 'pyboy.PyBoy', is_yellow: bool):
         if Pokemon.game is None:
@@ -537,10 +429,6 @@ class EnemyPokemon(Pokemon):
     def __init__(self, pyboy: 'pyboy.PyBoy', is_yellow: bool = True):
         super().__init__(pyboy, is_yellow)
 
-    # Helpers locaux
-    def _u8(self, md: 'MemoryData') -> int:  return self.mem.read_u8(md)
-    def _u16(self, md: 'MemoryData') -> int: return self.mem.read_u16(md)
-
     # Impl API
     @property
     def species_id(self) -> int:
@@ -595,6 +483,66 @@ class EnemyPokemon(Pokemon):
             
         return move_list
     
+
+class PlayerPokemonBattle(Pokemon):
+
+    def __init__(self, pyboy: 'pyboy.PyBoy', is_yellow: bool = True):
+        super().__init__(pyboy, is_yellow)
+
+    @property
+    def name(self) -> str:
+        return read_str_from_md(MainPokemonData.PlayerPokemonName)
+    
+    @property
+    def current_hp(self):
+        return self._u16(MainPokemonData.PlayerCurrentHP)
+    
+    @property 
+    def max_hp(self) -> int: 
+        return self._u16(MainPokemonData.PlayerMaxHP)
+    
+    def species_id(self) -> int:
+        return self._u8(MainPokemonData.PlayerPokemonNumber)
+    
+    @property 
+    def level(self) -> int: 
+        return self._u8(MainPokemonData.PlayerLevel)
+
+    @property 
+    def status(self) -> List[str]:
+        return parse_status(self._u8(MainPokemonData.PlayerStatus))
+    
+    @property 
+    def types(self) -> Tuple[str, str]:
+        t1 = POKEMON_TYPES.get(self._u8(MainPokemonData.PlayerType1), "Unknown")
+        t2 = POKEMON_TYPES.get(self._u8(MainPokemonData.PlayerType2), "Unknown")
+        return (t1, t2)
+
+    @property
+    def pp(self) -> List[int]:
+        return [
+            self._u8(MainPokemonData.PlayerPP1),
+            self._u8(MainPokemonData.PlayerPP2),
+            self._u8(MainPokemonData.PlayerPP3),
+            self._u8(MainPokemonData.PlayerPP4)
+        ]
+    
+    @property
+    def moves(self) -> List[int]:
+        move_ids =  [
+            self._u8(MainPokemonData.PlayerMove1),
+            self._u8(MainPokemonData.PlayerMove2),
+            self._u8(MainPokemonData.PlayerMove3),
+            self._u8(MainPokemonData.PlayerMove4),
+        ]
+        move_list = []
+        
+        for id, pp in zip(move_ids,self.pp) :
+            m = Move.load_from_id(self.game,id)
+            m.set_remaining_pp(pp)
+            move_list.append(m)
+            
+        return move_list
 
 
 class PokemonFactory:

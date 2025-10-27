@@ -34,7 +34,7 @@ _SCENE_POLL_SEC = 3.10      # Check the scene only 10 times per second
 _LOG_THROTTLE_SEC = 1.0     # Avoid spamming exception logs
 _BTN_POP_COOLDOWN = 0.5  # seconds
 
-BASE_TOPIC = f"/{uuid.uuid4().hex[:6]}/PKM/"
+BASE_TOPIC = f"/dforirdod/PKM/"
 BATTLE_TOPIC = BASE_TOPIC +"battle"
 
 class GameQueue:
@@ -246,7 +246,6 @@ class PokemonGame(PyBoy):
 
     def _poll_scene_once(self) -> None:
         """Read battle state occasionally. Must only run in the main thread."""
-        return
         battle_id_bytes = self.get_data(MainPokemonData.BattleTypeID)
         if not battle_id_bytes:
             return
@@ -280,7 +279,7 @@ class PokemonGame(PyBoy):
             except Exception as e:
                 logger.error(f"Failed to publish MQTT message: {e}")
 
-            self.simulation_test()
+            # self.simulation_test()
             logger.info(f"Battle turn : {self.scene.battle_turn}")
         else:
             if getattr(self, "_in_battle", False):
