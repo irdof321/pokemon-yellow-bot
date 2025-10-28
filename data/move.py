@@ -63,10 +63,8 @@ class Move:
     
     @staticmethod
     def load_from_id(pyboy, id : int):
-        if id > 0x56:
-            print("oui")
         if id > 0xFF:
-            raise ValueError("id must be contained in [0x0:0x56]")
+            raise ValueError("id must be contained in [0x0:0xFF]")
         
         select_rom_bank(pyboy,0xE)
         new_move = Move.load_from_bytes(pyboy.memory[0x4000+(id-1)*6:0x4000+id*6])
