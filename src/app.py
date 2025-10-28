@@ -1,37 +1,42 @@
-# src/game/app.py
+"""Application entry-point."""
+from __future__ import annotations
+
 from game.core.emulator import EmulatorSession
-from game.services.scene_service import SceneService
-from game.services.autosave_service import AutosaveService
+from game.core.loop import EmulatorLoop
 from game.mqtt.client import MQTTClient
+from game.mqtt.topics import BASE_TOPIC
+from game.services.autosave_service import AutosaveService
+from game.services.move_service import MoveService
+from game.services.scene_service import SceneService
 from game.utils.logging_config import setup_logging
 
-def main():
-    # 1️⃣  Setup logging
+
+def main() -> None:
     logger = setup_logging()
 
-    # 2️⃣  Create emulator session (choose version)
-    game = EmulatorSession.from_choice("red")  # or "yellow", or ask user
+    game = EmulatorSession.from_choice("red", logger=logger)
 
-    # 3️⃣  Setup MQTT client
     mqtt_client = MQTTClient(
         host="test.mosquitto.org",
         port=1883,
-        base_topic="/dforirdod/PKM/",
-        logger=logger
+        base_topic=BASE_TOPIC,
+        logger=logger,
     )
 
-    # 4️⃣  Create services
     autosave = AutosaveService(game, logger)
     scene_service = SceneService(game, mqtt_client, logger)
+    move_service = MoveService(scene_service, mqtt_client, logger)
 
-    # 5️⃣  Run the main loop
+    loop = EmulatorLoop(game, [autosave, scene_service, move_service])
+
     try:
-        game.run(autosave, scene_service)
+        loop.run()
     except KeyboardInterrupt:
         logger.info("Game stopped manually.")
     finally:
         mqtt_client.disconnect()
         logger.info("Goodbye!")
+
 
 if __name__ == "__main__":
     main()
