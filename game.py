@@ -1,15 +1,16 @@
 import json
 import os
+import sys
 import threading
 import time
 from enum import Enum, auto
 from collections import deque
-import uuid
 
 from pyboy import PyBoy
 from loguru import logger
 
 from data.data import GBAButton
+from data.menu import MenuState, get_menu_state
 from data.ram_reader import MemoryData, SavedPokemonData, MainPokemonData
 from scenes.battles import get_battle_scene
 
@@ -17,6 +18,8 @@ from helpers.mqtt import get_global, start_global, publish, subscribe, subscribe
 # -----------------------------------------------------------------------------
 # Logging setup
 # -----------------------------------------------------------------------------
+# Remove default handler (it logs everything to stderr)
+logger.remove()
 os.makedirs("logs", exist_ok=True)
 logger.add(
     "logs/pokemon_{time}.log",
@@ -25,12 +28,17 @@ logger.add(
     backtrace=True,
     diagnose=True,
 )
-
+logger.add(
+    sys.stderr,
+    level="WARNING",
+    diagnose=True,  # Keep nice traceback and variable inspection for warnings/errors
+    backtrace=True
+)
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
 _AUTOSAVE_INTERVAL_SEC = 1
-_SCENE_POLL_SEC = 15      # Check the scene only 10 times per second
+_SCENE_POLL_SEC = 2      # Check the scene only 10 times per second
 _LOG_THROTTLE_SEC = 1.0     # Avoid spamming exception logs
 _BTN_POP_COOLDOWN = 1.0  # seconds
 
@@ -181,7 +189,7 @@ class PokemonGame(PyBoy):
         # --- Timing setup ---
         now = time.monotonic()
         next_save_at = now + _AUTOSAVE_INTERVAL_SEC
-        next_scene_at = now + _SCENE_POLL_SEC
+        next_scene_at = now + 10
         next_log_ok = now + _LOG_THROTTLE_SEC
         last_btn_pop_at = 0.0  # allow immediate first pop
 
@@ -197,6 +205,8 @@ class PokemonGame(PyBoy):
             )
         publish(get_global(), f"{BASE_TOPIC}/start", {"msg": "hello from PKM"}, qos=0, retain=False)
         subscribe_with_callback(get_global(),BATTLE_MOVE,self.callback_move)
+
+
         
         # --- Main emulator loop ---
         while True:
@@ -266,6 +276,13 @@ class PokemonGame(PyBoy):
                 self.scene = get_battle_scene(self, battle_id)
                 
             #Publish only once the scene
+            if not hasattr(self,"menu_state"):
+                self.menu_state = get_menu_state()
+            # logger.warning(f"Main menu : {self.scene.is_in_battle_main_menu()}")
+            self.scene.go_to_main_menu()
+            if not self.menu_state == get_menu_state():
+                self.menu_state = get_menu_state() 
+                logger.warning(f"POS : {get_menu_state()}")
             if self.scene.battle_turn == _last_battle_turn:
                 return
             _last_battle_turn = self.scene.battle_turn
@@ -319,15 +336,7 @@ class PokemonGame(PyBoy):
         logger.warning(f"The chosen move is {msg}")
         j = json.loads(msg)
         move_nb = j["move_nb"]
-        if move_nb == 1:
-            self.scene.use_move_1()
-        if move_nb == 2:
-            self.scene.use_move_2()
-        if move_nb == 3:
-            self.scene.use_move_3()
-        if move_nb == 4:
-            self.scene.use_move_4()
-
+        self.scene.use_move(move_nb)
 
 
 async def get_battle():
@@ -337,4 +346,4 @@ async def get_battle():
 if __name__ == "__main__":
     game = PokemonGame.get_game("red")
     game.start()
-    # game.start(file_save_state="games/Rouge/PokemonRouge.Carabaffe.gb.state")
+    # game.start(file_save_state="games/Rouge/PokemonRouge.psn2.state")

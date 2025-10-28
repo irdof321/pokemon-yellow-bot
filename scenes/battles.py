@@ -1,7 +1,11 @@
 from dataclasses import dataclass
+from enum import Enum
 from threading import Thread
+import threading
 from time import sleep
 from data.data import GBAButton
+from data.helpers import read_u8_mem
+from data.menu import get_menu_state
 from data.pokemon import PartyPokemon, EnemyPokemon, PlayerPokemonBattle, read_u8
 from data.ram_reader import MainPokemonData, SavedPokemonData
 
@@ -160,34 +164,62 @@ BATTLE_INFO = {
     }
 }
 
+class MENU_STATE(Enum) :
+    MAIN_MENU_LEFT = (9,14)
+    MAIN_MENU_RIGHT = (15,14)
+    MOVES_SELECTION = (5,12)
+    POKEMON_SELECTION = (0,1)
+    POKEMON_SUB_MENU = (12,12)
+
+
 class BattleScene:
     game = None
 
     def __init__(self,pyboy):
         BattleScene.game = pyboy
         
-
-    def use_move_1(self):
-        BattleScene.game.button(GBAButton.A)
-        BattleScene.game.button(GBAButton.A)
-
-    def use_move_2(self):
-        BattleScene.game.button(GBAButton.A)
-        BattleScene.game.button(GBAButton.DOWN)
-        BattleScene.game.button(GBAButton.A)
+    def get_slected_move(self) -> int:
+        return get_menu_state().selected_item_id
         
-    def use_move_3(self):
+
+    def _add_down_button(self,n):
+        for i in range(n):
+            BattleScene.game.button(GBAButton.DOWN)
+
+    def _add_up_button(self,n):
+        for i in range(n):
+            BattleScene.game.button(GBAButton.UP)
+
+
+    def go_to_main_menu(self):
+        if not self.is_in_battle_main_menu():
+            if self.game.btn_event_list.size() == 0:
+                BattleScene.game.button(GBAButton.A)
+            threading.Timer(1, self.go_to_main_menu, args=()).start()
+
+    def use_move(self,n):
+            threading.Timer(1, self._use_move, args=(n,)).start()
+
+    def _use_move(self,n):
+        if not self.is_in_battle_main_menu():
+            threading.Timer(1, self._use_move, args=(n,)).start()
         BattleScene.game.button(GBAButton.A)
-        BattleScene.game.button(GBAButton.DOWN)
-        BattleScene.game.button(GBAButton.DOWN)
+        n_to_move = self.get_slected_move() - n 
+        if n_to_move > 0 :
+            self._add_up_button(n_to_move-1)
+        elif n_to_move < 0:
+            self._add_down_button(abs(n_to_move+1))
         BattleScene.game.button(GBAButton.A)
-        
-    def use_move_4(self):
-        BattleScene.game.button(GBAButton.A)
-        BattleScene.game.button(GBAButton.DOWN)
-        BattleScene.game.button(GBAButton.DOWN)
-        BattleScene.game.button(GBAButton.DOWN)
-        BattleScene.game.button(GBAButton.A)
+
+
+    def get_menu_pos(self):
+        x = read_u8_mem(MainPokemonData.MenuCursorXPos)
+        y = read_u8_mem(MainPokemonData.MenuCursorYPos)
+        return (x,y)
+    
+    def is_in_battle_main_menu(self):
+        return get_menu_state().cursor_pos_top in [MENU_STATE.MAIN_MENU_LEFT.value, MENU_STATE.MAIN_MENU_RIGHT.value]
+            
 
 
         

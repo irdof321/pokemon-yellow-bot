@@ -204,7 +204,7 @@ def publish(client: mqtt.Client, topic: str, payload: dict | list | str, qos: in
         if info.rc != mqtt.MQTT_ERR_SUCCESS:
             client.logger.warning(f"[MQTT] Publish rc={info.rc} topic={topic}")
         else:
-            client.logger.debug(f"[MQTT] Published {topic}: {payload}")
+            client.logger.debug(f"[MQTT] Published {topic}) #: {payload}")
     except Exception as e:
         client.logger.exception(f"[MQTT] Publish error on {topic}: {e}")
 

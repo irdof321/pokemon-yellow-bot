@@ -1,4 +1,5 @@
 
+from dataclasses import dataclass
 from typing import List
 
 from data.decoder import decode_pkm_text
@@ -29,3 +30,31 @@ def read_str_from_md(md : MemoryData):
 
 def read_list(raw: List[int], sl: tuple[int, int]) -> List[int]:
     return raw[sl[0]:sl[1]]
+
+
+
+
+def fix(md: 'MemoryData', is_yellow: bool) -> 'MemoryData':
+    # applique le décalage Yellow si nécessaire
+    return MemoryData.get_pkm_yellow_addresses(md) if is_yellow else md
+
+def read_bytes(  md: 'MemoryData') -> List[int]:
+    return list( MemoryData.game.memory[md.start_address : md.end_address + 1])
+
+def read_u8_mem( md: 'MemoryData') -> int:
+    return read_u8(read_bytes(md), (0, 1))  # (start, end_excl) relatif au buffer
+
+def read_u16_mem( md: 'MemoryData') -> int:
+    return read_u16(read_bytes(md), (0, 2))
+
+def write_bytes( md: 'MemoryData', data: List[int]):
+    MemoryData.game.memory[md.start_address : md.end_address + 1] = bytes(data)
+
+def write_u8( md: 'MemoryData', value: int):
+    MemoryData.game.memory[md.start_address] = value & 0xFF
+
+def write_u16(md: 'MemoryData', value: int):
+    lo = value & 0xFF
+    hi = (value >> 8) & 0xFF
+    MemoryData.game.memory[md.start_address] = lo
+    MemoryData.game.memory[md.start_address + 1] = hi

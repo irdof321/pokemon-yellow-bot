@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 import pyboy
-from dataclasses import dataclass
 from typing import Any, ClassVar, List, Dict, Literal, Optional, Tuple
 from data.decoder import decode_pkm_text
-from data.helpers import read_list, read_str_from_md, read_u16, read_u8
+from data.helpers import  read_list, read_str_from_md, read_u16, read_u16_mem, read_u8, read_u8_mem
 from data.ram_reader import MainPokemonData, MemoryData
 from data.move import Move
 from data.data import POKDX_ID_TO_NAME, POKEMON_ROM_ID_TO_PKDX_ID, POKEMON_TYPES
@@ -128,40 +127,7 @@ def parse_dvs(b1: int, b2: int) -> Dict[str, int]:
 
 
 
-@dataclass
-class MemAdapter:
-    pyboy: 'pyboy.PyBoy'
-    is_yellow: bool
 
-    @staticmethod
-    def fix(md: 'MemoryData', is_yellow: bool) -> 'MemoryData':
-        # applique le décalage Yellow si nécessaire
-        return MemoryData.get_pkm_yellow_addresses(md) if is_yellow else md
-
-    def read_bytes(self, md: 'MemoryData') -> List[int]:
-        f = self.fix(md, self.is_yellow)
-        return list(self.pyboy.memory[f.start_address : f.end_address + 1])
-
-    def read_u8(self, md: 'MemoryData') -> int:
-        return read_u8(self.read_bytes(md), (0, 1))  # (start, end_excl) relatif au buffer
-
-    def read_u16(self, md: 'MemoryData') -> int:
-        return read_u16(self.read_bytes(md), (0, 2))
-
-    def write_bytes(self, md: 'MemoryData', data: List[int]):
-        f = self.fix(md, self.is_yellow)
-        self.pyboy.memory[f.start_address : f.end_address + 1] = bytes(data)
-
-    def write_u8(self, md: 'MemoryData', value: int):
-        f = self.fix(md, self.is_yellow)
-        self.pyboy.memory[f.start_address] = value & 0xFF
-
-    def write_u16(self, md: 'MemoryData', value: int):
-        f = self.fix(md, self.is_yellow)
-        lo = value & 0xFF
-        hi = (value >> 8) & 0xFF
-        self.pyboy.memory[f.start_address] = lo
-        self.pyboy.memory[f.start_address + 1] = hi
 
 
 class Pokemon(ABC):
@@ -169,13 +135,12 @@ class Pokemon(ABC):
     game: ClassVar[Optional['pyboy.PyBoy']] = None
 
     # Local helpers
-    def _u8(self, md: 'MemoryData') -> int:  return self.mem.read_u8(md)
-    def _u16(self, md: 'MemoryData') -> int: return self.mem.read_u16(md)
+    def _u8(self, md: 'MemoryData') -> int:  return read_u8_mem(md)
+    def _u16(self, md: 'MemoryData') -> int: return read_u16_mem(md)
 
     def __init__(self, pyboy: 'pyboy.PyBoy', is_yellow: bool):
         if Pokemon.game is None:
             Pokemon.game = pyboy
-        self.mem = MemAdapter(pyboy, is_yellow)
         # caches optionnels
         self._cache: Dict[str, Any] = {}
 
@@ -253,8 +218,7 @@ class PartyPokemon(Pokemon):
             raise ValueError("slot must be in 1..6")
         self.slot = slot
         md_block, _ = self.SLOT_BLOCKS[self.slot]
-        fixed = self.mem.fix(md_block, self.mem.is_yellow)
-        self._base_addr = fixed.start_address  # début du struct (44 octets)
+        self._base_addr = md_block.start_address  # début du struct (44 octets)
 
     # --------------- helpers RAM (live-read) ----------------
     def _abs_range(self, key: str) -> Tuple[int, int]:
@@ -264,7 +228,7 @@ class PartyPokemon(Pokemon):
 
     def _rb(self, key: str) -> List[int]:
         s, e = self._abs_range(key)
-        return list(self.mem.pyboy.memory[s:e])
+        return list(MemoryData.game.memory[s:e])
 
     def _read_u8(self, key: str) -> int:
         raw = self._rb(key)               # attend au moins 1 octet
@@ -276,11 +240,11 @@ class PartyPokemon(Pokemon):
 
     def _write_u8(self, key: str, value: int):
         s, _ = self._abs_range(key)
-        self.mem.pyboy.memory[s] = value & 0xFF
+        MemoryData.game.memory[s] = value & 0xFF
 
     def _write_u8_list_slot(self, key: str, idx: int, value: int):
         s, _ = self._abs_range(key)
-        self.mem.pyboy.memory[s + idx] = value & 0xFF
+        MemoryData.game.memory[s + idx] = value & 0xFF
 
     # ---------------- Core fields ---------------------------
     @property
@@ -292,7 +256,7 @@ class PartyPokemon(Pokemon):
     def nickname(self) -> str:
         # nickname stocké ailleurs (11 octets), on le lit à la volée
         _, nick_md = self.SLOT_BLOCKS[self.slot]
-        raw = self.mem.read_bytes(nick_md)  # Yellow-fix inside
+        raw = MemoryData.game.read_bytes(nick_md)  # Yellow-fix inside
         return decode_pkm_text(raw, stop_at_terminator=True)
 
     @property
