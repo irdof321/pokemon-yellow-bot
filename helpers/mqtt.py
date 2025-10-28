@@ -86,7 +86,15 @@ def _on_unsubscribe(client: mqtt.Client, userdata: Any, mid: int, reason_code_li
     else:
         client.logger.error(f"[MQTT] Unsubscribe failed: {reason_code_list[0]}")
 
+def subscribe_with_callback(client, topic, callback):
+    """Subscribe to a topic and call `callback(topic, payload)` for each message."""
+    def on_message_wrapper(_client, _userdata, msg):
+        payload = msg.payload.decode(errors="ignore")
+        callback(msg.topic, payload)
 
+    # Temporarily override the client's message handler
+    client.message_callback_add(topic, on_message_wrapper)
+    client.subscribe(topic)
 # -------------------------------------------------------------------------
 # Client creation / start / stop
 # -------------------------------------------------------------------------

@@ -13,7 +13,7 @@ from data.data import GBAButton
 from data.ram_reader import MemoryData, SavedPokemonData, MainPokemonData
 from scenes.battles import get_battle_scene
 
-from helpers.mqtt import get_global, start_global, publish
+from helpers.mqtt import get_global, start_global, publish, subscribe, subscribe_with_callback
 # -----------------------------------------------------------------------------
 # Logging setup
 # -----------------------------------------------------------------------------
@@ -29,13 +29,16 @@ logger.add(
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
-_AUTOSAVE_INTERVAL_SEC = 10000
-_SCENE_POLL_SEC = 3.10      # Check the scene only 10 times per second
+_AUTOSAVE_INTERVAL_SEC = 1
+_SCENE_POLL_SEC = 15      # Check the scene only 10 times per second
 _LOG_THROTTLE_SEC = 1.0     # Avoid spamming exception logs
-_BTN_POP_COOLDOWN = 0.5  # seconds
+_BTN_POP_COOLDOWN = 1.0  # seconds
 
 BASE_TOPIC = f"/dforirdod/PKM/"
-BATTLE_TOPIC = BASE_TOPIC +"battle"
+BATTLE_TOPIC = BASE_TOPIC +"battle/info"
+BATTLE_MOVE = BASE_TOPIC + "battle/move"
+
+_last_battle_turn = -1
 
 class GameQueue:
     def __init__(self):
@@ -193,6 +196,7 @@ class PokemonGame(PyBoy):
                 lwt={"topic": f"{BASE_TOPIC}/status", "payload": "offline", "qos": 0, "retain": True},
             )
         publish(get_global(), f"{BASE_TOPIC}/start", {"msg": "hello from PKM"}, qos=0, retain=False)
+        subscribe_with_callback(get_global(),BATTLE_MOVE,self.callback_move)
         
         # --- Main emulator loop ---
         while True:
@@ -246,6 +250,7 @@ class PokemonGame(PyBoy):
 
     def _poll_scene_once(self) -> None:
         """Read battle state occasionally. Must only run in the main thread."""
+        global _last_battle_turn
         battle_id_bytes = self.get_data(MainPokemonData.BattleTypeID)
         if not battle_id_bytes:
             return
@@ -255,14 +260,17 @@ class PokemonGame(PyBoy):
             if not hasattr(self, "_in_battle") or not self._in_battle:
                 logger.info(f"Battle started with ID {battle_id}")
                 self._in_battle = True
+            
 
             if not hasattr(self, "scene") or self.scene is None:
                 self.scene = get_battle_scene(self, battle_id)
                 
+            #Publish only once the scene
+            if self.scene.battle_turn == _last_battle_turn:
+                return
+            _last_battle_turn = self.scene.battle_turn
+            
             # Publish battle info as JSON
-            payload = {
-                "battle": str(self.scene)
-            }
             try:
                 publish(
                     get_global(),
@@ -274,7 +282,7 @@ class PokemonGame(PyBoy):
                         "scene" : self.scene.to_dict()
                     },
                     qos=0,
-                    retain=False
+                    retain=True
                 )
             except Exception as e:
                 logger.error(f"Failed to publish MQTT message: {e}")
@@ -305,7 +313,20 @@ class PokemonGame(PyBoy):
 
 
 
-
+    def callback_move(self,topic,msg):
+        if not hasattr(self,"scene"):
+            return
+        logger.warning(f"The chosen move is {msg}")
+        j = json.loads(msg)
+        move_nb = j["move_nb"]
+        if move_nb == 1:
+            self.scene.use_move_1()
+        if move_nb == 2:
+            self.scene.use_move_2()
+        if move_nb == 3:
+            self.scene.use_move_3()
+        if move_nb == 4:
+            self.scene.use_move_4()
 
 
 
