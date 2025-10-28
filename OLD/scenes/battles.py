@@ -174,9 +174,11 @@ class MENU_STATE(Enum) :
 
 class BattleScene:
     game = None
+    
 
     def __init__(self,pyboy):
         BattleScene.game = pyboy
+        self.counter_main_menu = 0
         
     def get_slected_move(self) -> int:
         return get_menu_state().selected_item_id
@@ -193,9 +195,14 @@ class BattleScene:
 
     def go_to_main_menu(self):
         if not self.is_in_battle_main_menu():
+            self.counter_main_menu += 1
             if self.game.btn_event_list.size() == 0:
                 BattleScene.game.button(GBAButton.A)
             threading.Timer(1, self.go_to_main_menu, args=()).start()
+        else:
+            self.counter_main_menu = 0
+        if self.counter_main_menu > 10:
+            return
 
     def use_move(self,n):
             threading.Timer(1, self._use_move, args=(n,)).start()

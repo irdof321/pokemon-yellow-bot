@@ -126,11 +126,11 @@ class PokemonGame(PyBoy):
                 path = "games/PokemonRed.gb"
             elif input_choice.lower() in ["b", "blue"]:
                 input_choice = "blue"
-                MemoryData.set_shift(0x5)
+                MemoryData.set_shift(0x0)
                 path = "games/PokemonBleu.gb"
             elif input_choice.lower() in ["y", "yellow"]:
                 input_choice = "yellow"
-                MemoryData.set_shift(0x4)
+                MemoryData.set_shift(0x0)
                 path = "games/PokemonJaune.gb"
             else:
                 input_choice = input("Choose your game Pokémon Red (r), Blue (b) or Yellow (y): ").strip()
@@ -346,4 +346,4 @@ async def get_battle():
 if __name__ == "__main__":
     game = PokemonGame.get_game("red")
     game.start()
-    # game.start(file_save_state="games/Rouge/PokemonRouge.psn2.state")
+    # game.start(file_save_state="games/Rouge/PokemonRed.TestMove.gb.state")
