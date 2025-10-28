@@ -112,7 +112,10 @@ def parse_status(b: int) -> List[str]:
     # A number between 0 and 7 is choosen randomly
     if b & 0b00000111:
         return [f"Sleep ({7-(b & 0b00000111)}/7)"]
-    return [status for bit, status in STATUS_BIT_MASKS.items() if b & bit and bit != 0b00000111]
+    status = [status for bit, status in STATUS_BIT_MASKS.items() if b & bit and bit != 0b00000111]
+    if len(status) == 0:
+        status = ["Healty"]
+    return status
 
 
 def parse_dvs(b1: int, b2: int) -> Dict[str, int]:
