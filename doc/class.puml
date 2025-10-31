@@ -1,0 +1,242 @@
+@startuml
+skinparam linetype ortho
+
+interface Service {
+  +start()
+  +tick(now: float)
+}
+
+enum GameVersion {
+  RED
+  BLUE
+  YELLOW
+}
+
+enum GBAButton {
+  A
+  B
+  START
+  SELECT
+  UP
+  DOWN
+  LEFT
+  RIGHT
+  L
+  R
+  PASS
+}
+
+class SaveStateManager {
+  +rom_path: str
+  +custom_state_path: Optional[str]
+  +path: Path
+  +load(emulator): bool
+  +save(emulator): None
+}
+
+class "ThreadSafeQueue<T>" as ThreadSafeQueue {
+  -_queue: Deque<T>
+  -_lock: Lock
+  +append(item: T)
+  +pop(): Optional<T>
+  +clear()
+}
+
+class EmulatorSession {
+  +version: GameVersion
+  +logger
+  +save_state: SaveStateManager
+  +buttons: ThreadSafeQueue<GBAButton>
+  +is_running: bool
+  +from_choice(choice): EmulatorSession
+  +enqueue_button(button: GBAButton)
+  +pop_button(): Optional<GBAButton>
+  +press_button(button: GBAButton)
+  +load_state_from_disk(): bool
+  +save_state_to_disk()
+  +read_memory(elem: MemoryData): bytes
+  +tick_once(): bool
+}
+
+EmulatorSession --|> PyBoy
+EmulatorSession *-- SaveStateManager
+EmulatorSession *-- ThreadSafeQueue
+EmulatorSession --> GameVersion
+EmulatorSession --> GBAButton
+
+class EmulatorLoop {
+  -session: EmulatorSession
+  -services: List<Service>
+  -button_cooldown: float
+  -clock(now): float
+  -_next_button_time: float
+  +run()
+  -_maybe_pop_button(now: float)
+}
+
+EmulatorLoop --> EmulatorSession
+EmulatorLoop --> Service
+
+class AutosaveService {
+  -session: EmulatorSession
+  -logger
+  -interval: float
+  -_next_save_at: float
+  +start()
+  +tick(now: float)
+}
+
+AutosaveService --> EmulatorSession
+
+class MQTTConfig {
+  +host: str
+  +port: int
+  +keepalive: int
+  +client_id: Optional[str]
+  +use_tls: bool
+  +username: Optional[str]
+  +password: Optional[str]
+}
+
+class MQTTClient {
+  -config: MQTTConfig
+  -base_topic: str
+  -logger
+  -_client: mqtt.Client
+  -_connected: Event
+  -_message_handlers: Dict[str, Callable]
+  +connect()
+  +disconnect()
+  +publish(topic, payload, qos, retain)
+  +subscribe(topic, handler)
+  +unsubscribe(topic)
+}
+
+MQTTClient *-- MQTTConfig
+
+class SceneService {
+  -session: EmulatorSession
+  -mqtt: MQTTClient
+  -logger
+  -poll_interval: float
+  -_next_poll_at: float
+  -_scene: BattleScene
+  -_last_turn: int
+  +start()
+  +tick(now: float)
+  -_poll_scene(now: float)
+  +current_scene: BattleScene
+}
+
+SceneService --> EmulatorSession
+SceneService --> MQTTClient
+SceneService --> BattleScene
+
+class MoveService {
+  -scene_service: SceneService
+  -mqtt: MQTTClient
+  -logger
+  +start()
+  +tick(now: float)
+  -_on_move_message(topic: str, payload: str)
+}
+
+MoveService --> SceneService
+MoveService --> MQTTClient
+
+class BattleScene {
+  +session: EmulatorSession
+  +battle_id: int
+  -logger
+  -_menu_state: MenuState
+  -_main_menu_attempts: int
+  +update()
+  -_ensure_main_menu()
+  +is_in_battle_main_menu: bool
+  +selected_move_index: int
+  +use_move(move_index: int)
+  -_refresh()
+  +turn_counter: int
+  +to_dict(): dict
+}
+
+class NormalBattle {
+  -player_party: List<PartyPokemon>
+  -player_active: PlayerPokemonBattle
+  -enemy: EnemyPokemon
+  +_refresh()
+  +to_dict(): dict
+}
+
+BattleScene <|-- NormalBattle
+BattleScene --> EmulatorSession
+BattleScene --> MenuState
+BattleScene --> GBAButton
+NormalBattle --> PartyPokemon
+NormalBattle --> PlayerPokemonBattle
+NormalBattle --> EnemyPokemon
+
+class MenuState {
+  +cursor_y_top: int
+  +cursor_x_top: int
+  +selected_item_id: int
+  +hidden_tile_under_cursor: int
+  +last_item_id: int
+  +key_bitmask: int
+  +previous_item_id: int
+  +last_party_cursor_pos: int
+  +last_item_cursor_pos: int
+  +last_battle_cursor_pos: int
+  +current_party_index: int
+  +cursor_tile_ptr: int
+  +first_displayed_item_id: int
+  +select_highlight: int
+  +cursor_pos_top: Tuple<int, int>
+  +has_select_highlight: bool
+}
+
+class Move {
+  +name: str
+  +id: int
+  +power: int
+  +pp: int
+  +load_from_id(pyboy, id): Move
+  +load_from_bytes(data): Move
+  +effect
+  +type
+  +accuracy
+  +set_remaining_pp(rem_pp: int)
+  +get_remaining_pp(): int
+  +to_dict(): dict
+  +to_json(indent: int): str
+}
+
+abstract class Pokemon {
+  +number: int
+  +name: str
+  +level: int
+  +current_hp: int
+  +max_hp: int
+  +status: List[str]
+  +types: Tuple[str,str]
+  +moves: List<Move>
+  +refresh()
+  +to_dict(): Dict
+}
+
+class PartyPokemon
+class EnemyPokemon
+class PlayerPokemonBattle
+class PokemonFactory
+
+Pokemon <|-- PartyPokemon
+Pokemon <|-- EnemyPokemon
+Pokemon <|-- PlayerPokemonBattle
+PartyPokemon --> Move
+EnemyPokemon --> Move
+PlayerPokemonBattle --> Move
+PokemonFactory ..> EnemyPokemon
+PokemonFactory ..> PartyPokemon
+PokemonFactory ..> Pokemon
+
+@enduml

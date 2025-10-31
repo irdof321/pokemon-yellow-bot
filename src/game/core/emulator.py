@@ -20,7 +20,7 @@ class EmulatorSession(PyBoy):
         super().__init__(ROM_PATHS[version], window="SDL2", log_level="INFO")
         self.version = version
         self.logger = logger
-        self.save_state = SaveStateManager(ROM_PATHS[version], save_state_path)
+        self.save_state_ma = SaveStateManager(ROM_PATHS[version], save_state_path)
         self.buttons: ThreadSafeQueue[GBAButton] = ThreadSafeQueue()
         MemoryData.set_shift(0x0)
         MemoryData.set_game(self)
@@ -56,9 +56,9 @@ class EmulatorSession(PyBoy):
     # ------------------------------------------------------------------
     def load_state_from_disk(self) -> bool:
         try:
-            loaded = self.save_state.load(self)
+            loaded = self.save_state_ma.load(self)
             if loaded:
-                self.logger.info("Save state loaded from {}", self.save_state.path)
+                self.logger.info("Save state loaded from {}", self.save_state_ma.path)
             return loaded
         except Exception as exc:  # pragma: no cover - defensive logging
             self.logger.exception("Failed to load save state: {}", exc)
@@ -66,7 +66,7 @@ class EmulatorSession(PyBoy):
 
     def save_state_to_disk(self) -> None:
         try:
-            self.save_state.save(self)
+            self.save_state_ma.save(self)
         except Exception as exc:  # pragma: no cover - defensive logging
             self.logger.exception("Failed to save state: {}", exc)
             raise

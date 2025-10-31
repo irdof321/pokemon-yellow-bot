@@ -58,6 +58,7 @@ class MQTTClient:
             self.logger.warning("MQTT connection timeout")
 
     def disconnect(self) -> None:
+        return
         try:
             self._client.loop_stop()
             if self._client.is_connected():
