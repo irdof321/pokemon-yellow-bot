@@ -10,11 +10,12 @@ from game.services.move_service import MoveService
 from game.services.scene_service import SceneService
 from game.utils.logging_config import setup_logging
 
+SAVE_STE_PATH = "games/PokemonRed.test1.gb.state"
 
 def main() -> None:
     logger = setup_logging()
 
-    game = EmulatorSession.from_choice("red", logger=logger)
+    game = EmulatorSession.from_choice("red", logger=logger, save_state_path = SAVE_STE_PATH)
 
     mqtt_client = MQTTClient(
         host="test.mosquitto.org",
@@ -23,11 +24,15 @@ def main() -> None:
         logger=logger,
     )
 
-    autosave = AutosaveService(game, logger)
+    autosave = AutosaveService(game, logger,10)
     scene_service = SceneService(game, mqtt_client, logger)
     move_service = MoveService(scene_service, mqtt_client, logger)
 
-    loop = EmulatorLoop(game, [autosave, scene_service, move_service])
+    loop = EmulatorLoop(game, [
+                               autosave,
+                                scene_service,
+                                move_service
+                            ])
 
     try:
         loop.run()

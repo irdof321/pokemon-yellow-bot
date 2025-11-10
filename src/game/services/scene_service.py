@@ -9,11 +9,12 @@ from game.data.ram_reader import MainPokemonData
 from game.mqtt.client import MQTTClient
 from game.mqtt.topics import BATTLE_INFO_TOPIC, START_TOPIC
 from game.scenes.battle_scene import create_battle_scene, BattleScene
+from game.services.service import Service
 from game.utils.json_utils import to_json
 from game.utils.time_utils import has_expired, seconds_from_now
 
 
-class SceneService:
+class SceneService(Service):
     def __init__(self, session: EmulatorSession, mqtt_client: MQTTClient, logger, poll_interval: float = 2.0):
         self.session = session
         self.mqtt = mqtt_client

@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from game.core.emulator import EmulatorSession
+from game.services.service import Service
 from game.utils.time_utils import has_expired, seconds_from_now
 
 
-class AutosaveService:
+class AutosaveService(Service):
     def __init__(self, session: EmulatorSession, logger, interval_seconds: float = 1.0):
         self.session = session
         self.logger = logger

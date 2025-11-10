@@ -1,15 +1,12 @@
 """Main loop driving the emulator and background services."""
 from __future__ import annotations
 
-from typing import Iterable, Protocol
+from typing import Iterable
 
 from game.core.emulator import EmulatorSession
+from game.services.service import Service
 from game.utils.time_utils import has_expired, monotonic, seconds_from_now
 
-
-class Service(Protocol):
-    def start(self) -> None: ...
-    def tick(self, now: float) -> None: ...
 
 
 class EmulatorLoop:

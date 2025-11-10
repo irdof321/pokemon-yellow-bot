@@ -30,9 +30,9 @@ class EmulatorSession(PyBoy):
     # Construction helpers
     # ------------------------------------------------------------------
     @classmethod
-    def from_choice(cls, choice: str, *, logger=_loguru_logger) -> "EmulatorSession":
+    def from_choice(cls, choice: str, *, logger=_loguru_logger, save_state_path: str | None = None) -> "EmulatorSession":
         version = version_from_choice(choice)
-        return cls(version, logger=logger)
+        return cls(version, logger=logger,save_state_path= save_state_path)
 
     # ------------------------------------------------------------------
     # Button queue helpers

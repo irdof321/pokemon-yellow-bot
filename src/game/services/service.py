@@ -1,0 +1,6 @@
+from typing import Protocol
+
+
+class Service(Protocol):
+    def start(self) -> None: ...
+    def tick(self, now: float) -> None: ...

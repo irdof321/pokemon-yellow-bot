@@ -6,9 +6,10 @@ import json
 from game.mqtt.client import MQTTClient
 from game.mqtt.topics import BATTLE_MOVE_TOPIC
 from game.services.scene_service import SceneService
+from game.services.service import Service
 
 
-class MoveService:
+class MoveService(Service):
     def __init__(self, scene_service: SceneService, mqtt_client: MQTTClient, logger):
         self.scene_service = scene_service
         self.mqtt = mqtt_client

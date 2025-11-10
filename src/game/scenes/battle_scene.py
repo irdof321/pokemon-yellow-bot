@@ -57,6 +57,12 @@ class BattleScene:
         }
 
     @property
+    def is_in_move_menu(self) -> bool:
+        if self._menu_state is None:
+            return False
+        return self._menu_state.cursor_pos_top == MenuLocation.MOVES_SELECTION
+
+    @property
     def selected_move_index(self) -> int:
         if self._menu_state is None:
             return 0
