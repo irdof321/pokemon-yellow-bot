@@ -132,7 +132,7 @@ SceneService --> EmulatorSession
 SceneService --> MQTTClient
 SceneService --> BattleScene
 
-class MoveService {
+class BattleService {
   -scene_service: SceneService
   -mqtt: MQTTClient
   -logger
@@ -141,8 +141,8 @@ class MoveService {
   -_on_move_message(topic: str, payload: str)
 }
 
-MoveService --> SceneService
-MoveService --> MQTTClient
+BattleService --> SceneService
+BattleService --> MQTTClient
 
 class BattleScene {
   +session: EmulatorSession

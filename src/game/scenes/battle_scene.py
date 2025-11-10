@@ -11,14 +11,15 @@ from game.data.helpers import read_u8
 from game.data.menu import MenuState, get_menu_state
 from game.data.pokemon import EnemyPokemon, PartyPokemon, PlayerPokemonBattle
 from game.data.ram_reader import MainPokemonData
+from game.scenes.common import BATTLE_ACTION
 
 
 class MenuLocation(Enum):
-    MAIN_MENU_LEFT = (9, 14)
-    MAIN_MENU_RIGHT = (15, 14)
-    MOVES_SELECTION = (5, 12)
-    POKEMON_SELECTION = (0, 1)
-    POKEMON_SUB_MENU = (12, 12)
+    MAIN_MENU_LEFT      = (9, 14)
+    MAIN_MENU_RIGHT     = (15, 14)
+    MOVES_SELECTION     = (5, 12)
+    POKEMON_SELECTION   = (0, 1)
+    POKEMON_SUB_MENU    = (12, 12)
 
 
 @dataclass
@@ -68,6 +69,20 @@ class BattleScene:
             return 0
         return self._menu_state.selected_item_id
 
+    def use_action(action: BATTLE_ACTION, actions_list: dict | None = None):
+        if action == BATTLE_ACTION.MOVES:
+            return
+        elif action == BATTLE_ACTION.ITEM:
+            return
+        elif action == BATTLE_ACTION.PKM:
+            return
+        elif action == BATTLE_ACTION.RUN:
+            return
+        else:
+            raise ValueError(f"action must be of type BATTLE_ACTION but got {action}")
+        pass    
+
+# Actions -----------------------------------------------------------------------
     def use_move(self, move_index: int) -> None:
         """Queue button presses to select a move."""
         self.session.enqueue_button(GBAButton.A)
@@ -83,6 +98,8 @@ class BattleScene:
     def _refresh(self) -> None:
         """Hook for subclasses to refresh cached data."""
 
+
+# --------------------------------------------------------------------------------
     @property
     def turn_counter(self) -> int:
         raw = self.session.read_memory(MainPokemonData.BattleTurnCounter)

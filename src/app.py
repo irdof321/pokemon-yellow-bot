@@ -6,7 +6,7 @@ from game.core.loop import EmulatorLoop
 from game.mqtt.client import MQTTClient
 from game.mqtt.topics import BASE_TOPIC
 from game.services.autosave_service import AutosaveService
-from game.services.move_service import MoveService
+from game.services.battle_service import BattleService
 from game.services.scene_service import SceneService
 from game.utils.logging_config import setup_logging
 
@@ -26,7 +26,7 @@ def main() -> None:
 
     autosave = AutosaveService(game, logger,10)
     scene_service = SceneService(game, mqtt_client, logger)
-    move_service = MoveService(scene_service, mqtt_client, logger)
+    move_service = BattleService(scene_service, mqtt_client, logger)
 
     loop = EmulatorLoop(game, [
                                autosave,
