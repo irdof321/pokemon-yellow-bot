@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from time import sleep
 from typing import List
 
 from game.core.emulator import EmulatorSession
@@ -41,12 +42,10 @@ class BattleScene:
     def _ensure_main_menu(self) -> None:
         if self._menu_state is None:
             return
-        if self.is_in_battle_main_menu:
-            self._main_menu_attempts = 0
-            return
-        self._main_menu_attempts += 1
-        if self._main_menu_attempts <= 5:
-            self.session.enqueue_button(GBAButton.A)
+        while not self.is_in_battle_main_menu:
+            if self._main_menu_attempts <= 5:
+                self.session.enqueue_button(GBAButton.A)
+            sleep(0.1)
 
     @property
     def is_in_battle_main_menu(self) -> bool:
@@ -69,8 +68,12 @@ class BattleScene:
             return 0
         return self._menu_state.selected_item_id
 
-    def use_action(action: BATTLE_ACTION, actions_list: dict | None = None):
-        if action == BATTLE_ACTION.MOVES:
+    def use_action(self,action: BATTLE_ACTION, actions_list: dict | None = None):
+        self._ensure_main_menu()
+        if action == BATTLE_ACTION.ATTACK:
+            self.session.enqueue_button(GBAButton.A)
+            sleep(0.1)
+            self.use_move(int(actions_list))
             return
         elif action == BATTLE_ACTION.ITEM:
             return
@@ -85,7 +88,6 @@ class BattleScene:
 # Actions -----------------------------------------------------------------------
     def use_move(self, move_index: int) -> None:
         """Queue button presses to select a move."""
-        self.session.enqueue_button(GBAButton.A)
         diff = self.selected_move_index - move_index
         if diff > 0:
             for _ in range(diff):
@@ -129,7 +131,7 @@ class NormalBattle(BattleScene):
     def to_dict(self) -> dict:
         return {
             "enemy": self.enemy.to_dict(),
-            "player": self.player_active.to_dict(),
+            "on_battle": self.player_active.to_dict(),
             "party": [p.to_dict() for p in self.player_party],
         }
 

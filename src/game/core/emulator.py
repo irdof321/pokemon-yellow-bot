@@ -17,7 +17,7 @@ class EmulatorSession(PyBoy):
     """Thin wrapper around :class:`pyboy.PyBoy` adding project specific helpers."""
 
     def __init__(self, version: GameVersion, *, logger=_loguru_logger, save_state_path: str | None = None):
-        super().__init__(ROM_PATHS[version], window="SDL2", log_level="INFO")
+        super().__init__(ROM_PATHS[version], window="SDL2", log_level="INFO",sound_volume = 0.0)
         self.version = version
         self.logger = logger
         self.save_state_ma = SaveStateManager(ROM_PATHS[version], save_state_path)

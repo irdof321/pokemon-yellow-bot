@@ -59,7 +59,7 @@ class BattleService(Service):
             return
 
         try:
-            scene.use_action(battle_action,message.get("choice"),None)
+            scene.use_action(battle_action,message.get("choice"))
         except Exception as exc:  # pragma: no cover - defensive
             self.logger.exception("Failed to queue move: {}", exc)
 

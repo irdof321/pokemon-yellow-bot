@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class BATTLE_ACTION(Enum):
-    MOVES   = 0
+    ATTACK  = 0
     ITEM    = 1
     PKM     = 2
     RUN     = 3
