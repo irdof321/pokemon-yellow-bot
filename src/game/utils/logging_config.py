@@ -9,7 +9,7 @@ from typing import Optional
 from loguru import logger
 
 
-_DEFAULT_LOG_LEVEL = "INFO"
+_DEFAULT_LOG_LEVEL = "DEBUG"
 _LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {message}"
 
 

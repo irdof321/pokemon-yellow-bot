@@ -98,6 +98,7 @@ class EmulatorLoop:
             self._next_button_time = now + self.button_cooldown
             return
         self.session.logger.debug("Processing button {}", button)
+        self.session.logger.debug("Queued buttons: {}", self.session.buttons)
         self.session.press_button(button)
         self._next_button_time = seconds_from_now(
             self.button_cooldown, clock=lambda: now

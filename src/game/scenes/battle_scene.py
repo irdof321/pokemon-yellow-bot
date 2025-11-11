@@ -35,7 +35,6 @@ class BattleScene:
 
     def update(self) -> None:
         self._menu_state = get_menu_state()
-        self._ensure_main_menu()
         self._refresh()
 
     # ------------------------------------------------------------------
@@ -43,9 +42,9 @@ class BattleScene:
         if self._menu_state is None:
             return
         while not self.is_in_battle_main_menu:
-            if self._main_menu_attempts <= 5:
+            if not len(self.session.buttons) > 0:
                 self.session.enqueue_button(GBAButton.A)
-            sleep(0.1)
+            sleep(0.5)
 
     @property
     def is_in_battle_main_menu(self) -> bool:
@@ -72,7 +71,7 @@ class BattleScene:
         self._ensure_main_menu()
         if action == BATTLE_ACTION.ATTACK:
             self.session.enqueue_button(GBAButton.A)
-            sleep(0.1)
+            sleep(0.5)
             self.use_move(int(actions_list))
             return
         elif action == BATTLE_ACTION.ITEM:
@@ -88,6 +87,7 @@ class BattleScene:
 # Actions -----------------------------------------------------------------------
     def use_move(self, move_index: int) -> None:
         """Queue button presses to select a move."""
+        move_index -= 1  # Convert to 0-based index
         diff = self.selected_move_index - move_index
         if diff > 0:
             for _ in range(diff):

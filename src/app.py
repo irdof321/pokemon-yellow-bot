@@ -10,7 +10,7 @@ from game.services.battle_service import BattleService
 from game.services.scene_service import SceneService
 from game.utils.logging_config import setup_logging
 
-SAVE_STE_PATH = "games/PokemonRed.test1.gb.state"
+SAVE_STE_PATH = "games/Red.gb.state"
 
 def main() -> None:
     logger = setup_logging()
