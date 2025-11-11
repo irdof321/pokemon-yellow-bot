@@ -70,6 +70,8 @@ class SceneService(Service):
         else:
             if self._scene is not None:
                 self.logger.info("Battle ended")
+            # delete scene on battle end
+            del self._scene
             self._scene = None
             self._last_turn = -1
 
