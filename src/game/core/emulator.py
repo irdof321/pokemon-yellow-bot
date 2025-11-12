@@ -10,7 +10,7 @@ from game.core.queue import ThreadSafeQueue
 from game.core.state import SaveStateManager
 from game.core.version import GameVersion, ROM_PATHS, version_from_choice
 from game.data.data import GBAButton
-from game.data.ram_reader import MemoryData, SavedPokemonData
+from game.data.ram_reader import MemoryData, MoveROMBank, SavedPokemonData
 
 
 class EmulatorSession(PyBoy):
@@ -24,6 +24,7 @@ class EmulatorSession(PyBoy):
         self.buttons: ThreadSafeQueue[GBAButton] = ThreadSafeQueue()
         MemoryData.set_shift(0x0)
         MemoryData.set_game(self)
+        MoveROMBank(self)
         self.is_running = False
 
     # ------------------------------------------------------------------

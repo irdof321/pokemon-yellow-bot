@@ -1,27 +1,37 @@
-"""Helpers around PyBoy save states."""
-from __future__ import annotations
-
+import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-import shutil
-
 
 @dataclass(slots=True)
 class SaveStateManager:
-    """Helper responsible for loading and saving emulator state files, keeping rotating backups."""
+    """
+    Save state manager with rotating backups.
 
+    Backup policy:
+      - Current state: <rom>.state   (always the most recent, never .bak)
+      - Backups:       <rom>.state.bak_1 (most recent backup, previous .state)
+                       ...
+                       <rom>.state.bak_5 (oldest backup)
+    """
     rom_path: str
     custom_state_path: Optional[str] = None
-    max_backups: int = 5  # <-- how many .bak_<n> to keep
+    max_backups: int = 5  # number of .bak_n files to keep (excluding .state)
 
     @property
     def path(self) -> Path:
+        """Return the base path for the main .state file."""
         if self.custom_state_path:
             return Path(self.custom_state_path)
         return Path(f"{self.rom_path}.state")
 
+    def _bak_path(self, n: int) -> Path:
+        """Helper: build a safe backup file path like <rom>.state.bak_n."""
+        return self.path.with_name(self.path.name + f".bak_{n}")
+
     def load(self, emulator) -> bool:
+        """Load the latest state into the emulator, if it exists."""
         state_path = self.path
         if not state_path.exists():
             return False
@@ -30,27 +40,41 @@ class SaveStateManager:
         return True
 
     def save(self, emulator) -> None:
+        """Save the current emulator state and rotate backups safely."""
         state_path = self.path
         state_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # --- Rotate existing backups ---
-        # Delete the oldest if it exists
-        oldest = state_path.with_suffix(state_path.suffix + f".bak_{self.max_backups}")
+        # --- Rotate backups ---
+        # 1) Remove the oldest backup (.bak_max) if it exists
+        oldest = self._bak_path(self.max_backups)
         if oldest.exists():
             oldest.unlink()
 
-        # Shift all backups from n -> n+1
+        # 2) Shift all backups: .bak_(n) → .bak_(n+1)
         for n in range(self.max_backups - 1, 0, -1):
-            src = state_path.with_suffix(state_path.suffix + f".bak_{n}")
-            dst = state_path.with_suffix(state_path.suffix + f".bak_{n + 1}")
+            src = self._bak_path(n)
+            dst = self._bak_path(n + 1)
             if src.exists():
-                src.rename(dst)
+                src.replace(dst)
 
-        # Backup the current .state as .bak_1 (if it exists)
+        # 3) Backup the current .state as .bak_1 (if present)
         if state_path.exists():
-            bak1 = state_path.with_suffix(state_path.suffix + ".bak_1")
-            shutil.copy2(state_path, bak1)
+            shutil.copy2(state_path, self._bak_path(1))
 
-        # --- Save new state ---
-        with state_path.open("wb") as fh:
-            emulator.save_state(fh)
+        # --- Save new state (atomic write) ---
+        tmp_path = state_path.with_name(state_path.name + ".tmpwrite")
+        try:
+            with tmp_path.open("wb") as fh:
+                emulator.save_state(fh)
+                fh.flush()
+                os.fsync(fh.fileno())
+            # Atomically replace the old .state with the new one
+            os.replace(tmp_path, state_path)
+        finally:
+            # Clean up in case something failed before the replacement
+            if tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except OSError:
+                    pass
+__all__ = ["SaveStateManager"]

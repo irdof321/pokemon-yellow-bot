@@ -1,49 +1,46 @@
 
 from game.data.data import  POKEMON_TYPES, FUNCTION_CODE_EFFECT
 from dataclasses import dataclass
-from game.data.helpers import select_rom_bank
 from game.data.decoder import decode_pkm_text
 import json
 
+from game.data.ram_reader import MoveROMBank
 
 
-def find_index(li : list, number,max_occ=999999):
-    try:
-        if max_occ == 0:
-            return 0
-        idx = li.index(number)
-        max_occ -=1
-        return idx + 1 + find_index(li[idx+1:],number,max_occ)
-    except ValueError:
+# --- Trouver l'offset juste après la n-ième occurrence de 0x50
+def _offset_after_n_terms(buf: bytes | bytearray, byte: int, n: int) -> int | None:
+    if n <= 0:
         return 0
+    start = 0
+    for _ in range(n):
+        # si buf est bytearray/bytes, .find est supporté et renvoie -1 si absent
+        p = buf.find(byte, start) if isinstance(buf, (bytes, bytearray)) else -1
+        if p == -1:
+            return None
+        start = p + 1
+    return start  # début de la (n+1)-ième chaîne
 
-# --- Find start of the Nth (1-based) 0x50-terminated string in the *current* bank
 def _move_name_ptr_current_bank(pyboy, move_id: int, table_base: int = 0x4000) -> int:
-    """
-    Return a pointer (address) to the start of the Nth move name in the
-    *currently selected* ROM bank. No bank selection here.
-    - move_id: 1-based (0 => empty slot).
-    - table_base: where the concatenated names start (0x4000 in this bank).
-    """
     if move_id <= 0:
-        return -1  # empty / NA
-    idx = find_index(pyboy.memory[0x4000:0x460F],0x50,move_id-1)
-    
-    return  idx   # now at the first byte of the requested name
+        return -1
+    # scanner tout le bank mappé en 0x4000–0x7FFF
+    bank_window = bytes(pyboy.memory[0x4000:0x8000])
+    start = _offset_after_n_terms(bank_window, 0x50, move_id - 1)
+    if start is None:
+        # bank mauvais ou table tronquée
+        raise ValueError(
+            f"Not enough 0x50 terminators in current bank for move_id={move_id} "
+            f"(check bank or table bounds)."
+        )
+    return start  # offset relatif à table_base (0x4000)
 
-# --- Read+decode one move name from the *current* bank (no constants, no bank switch)
 def _read_move_name_current_bank(pyboy, move_id: int, table_base: int = 0x4000, cap: int = 24) -> str:
-    """
-    Decode the move name at the current bank using only the ID:
-    - Walk to the Nth string via terminators, then read a small window.
-    - Your decode_pkm_text() stops at 0x50, so 'cap' is just a safe upper bound.
-    """
     if move_id == 0:
         return "NA"
     start = _move_name_ptr_current_bank(pyboy, move_id, table_base=table_base)
     if start < 0:
         return "NA"
-    raw = pyboy.memory[0x4000+start:0xB060F]
+    raw = pyboy.memory[table_base + start : table_base + start + cap]
     return decode_pkm_text(raw, stop_at_terminator=True)
 
 
@@ -65,12 +62,13 @@ class Move:
     def load_from_id(pyboy, id : int):
         if id > 0xFF:
             raise ValueError("id must be contained in [0x0:0xFF]")
-        
-        select_rom_bank(pyboy,0xE)
-        new_move = Move.load_from_bytes(pyboy.memory[0x4000+(id-1)*6:0x4000+id*6])
+        if id <=0:
+            return Move.load_from_bytes([0,0,0,0,0,0])
+        move_bank = MoveROMBank()
 
-        select_rom_bank(pyboy,0x2C)
-        new_move.name = _read_move_name_current_bank(pyboy, new_move.id)
+        new_move = Move.load_from_bytes(move_bank.get_move_bytes(id))
+
+        new_move.name = move_bank.get_move_name(id,decode_pkm_text)
 
         return new_move
 

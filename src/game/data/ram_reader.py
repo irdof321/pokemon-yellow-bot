@@ -4,6 +4,84 @@ import time
 from loguru import logger
 import pyboy
 
+def select_rom_bank(pyboy, bank: int) -> None:
+    bank &= 0x7F
+    pyboy.memory[0x6000] = 0x00
+    pyboy.memory[0x2000] = bank
+
+
+# --- Constants ---
+BYTES_PER_MOVE         = 6
+MOVES_DATA_BANK_NUMBER = 0x0E
+NAMES_BANK_NUMBER      = 0x2C
+
+
+def _read_rom_bank_window(game: "pyboy.PyBoy", bank_number: int, start: int = 0x4000, end: int = 0x8000) -> bytes:
+    """
+    Safely read bytes from a ROM bank (0x4000–0x7FFF), always restoring the previous bank.
+    Returns a frozen copy (bytes).
+    """
+    old_bank = game.memory[0x2000]
+    try:
+        select_rom_bank(game, bank_number)
+        return bytes(game.memory[start:end])
+    finally:
+        # Ensure the previous bank is restored no matter what happens
+        if game.memory[0x2000] != old_bank:
+            select_rom_bank(game, old_bank)
+
+
+class MoveROMBank:
+    """
+    Singleton helper to preload move data and names from the ROM once.
+    Provides O(1) access to each move’s raw bytes and decoded name.
+    """
+
+    _instance = None
+
+    def __new__(cls, game: "pyboy.PyBoy" = None):
+        # If an instance already exists, reuse it
+        if cls._instance is not None:
+            return cls._instance
+
+        if game is None:
+            raise ValueError("MoveROMBank must be initialized once with a PyBoy instance")
+
+        # Create new instance and store it
+        cls._instance = super().__new__(cls)
+        cls._instance._init_data(game)
+        return cls._instance
+
+    def _init_data(self, game: "pyboy.PyBoy"):
+        # --- Preload both banks ---
+        self.moves_data: bytes = _read_rom_bank_window(game, MOVES_DATA_BANK_NUMBER)
+        self.names_blob: bytes = _read_rom_bank_window(game, NAMES_BANK_NUMBER)
+
+        # Split the 0x50-terminated names immediately
+        self._names_list: list[bytes] = self.names_blob.split(b"\x50")
+
+    # --- Accessors ---
+    def get_move_bytes(self, move_id: int) -> bytes:
+        """Return the 6-byte record for a given move ID (1-based)."""
+        if move_id <= 0:
+            raise ValueError("move_id must be >= 1")
+        start = (move_id - 1) * BYTES_PER_MOVE
+        end = start + BYTES_PER_MOVE
+        if end > len(self.moves_data):
+            raise IndexError(f"move_id {move_id} out of range (len={len(self.moves_data)})")
+        return self.moves_data[start:end]
+
+    def get_move_name_bytes(self, move_id: int) -> bytes:
+        """Return raw name bytes for a given move (without 0x50)."""
+        idx = move_id - 1
+        if idx < 0 or idx >= len(self._names_list):
+            raise IndexError(f"move_id {move_id} out of range for names list")
+        return self._names_list[idx]
+
+    def get_move_name(self, move_id: int, decode_pkm_text) -> str:
+        """Decode and return the move name using your existing text decoder."""
+        raw = self.get_move_name_bytes(move_id)
+        return decode_pkm_text(raw, stop_at_terminator=True)
 
 
 class MemoryData:

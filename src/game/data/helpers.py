@@ -7,11 +7,6 @@ from game.data.decoder import decode_pkm_text
 from game.data.ram_reader import MemoryData
 
 
-def select_rom_bank(pyboy, bank: int) -> None:
-    bank &= 0x7F
-    pyboy.memory[0x6000] = 0x00
-    pyboy.memory[0x2000] = bank
-
 
 def read_u8(raw: List[int], sl: Tuple[int, int] = (0, 1)) -> int:
     return raw[sl[0]]
@@ -67,7 +62,6 @@ def write_u16(md: MemoryData, value: int) -> None:
 
 
 __all__ = [
-    "select_rom_bank",
     "read_u8",
     "read_u16",
     "read_str",
