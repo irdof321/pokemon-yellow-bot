@@ -40,6 +40,8 @@ class EmulatorSession(PyBoy):
     # ------------------------------------------------------------------
     def enqueue_button(self, button: GBAButton) -> None:
         self.buttons.append(button)
+        # for i in range(60):
+        #     self.buttons.append(GBAButton.PASS)
 
     def pop_button(self) -> Optional[GBAButton]:
         return self.buttons.pop()
@@ -50,7 +52,8 @@ class EmulatorSession(PyBoy):
     def press_button(self, button: GBAButton) -> None:
         if button is GBAButton.PASS:
             return
-        super().button(button.value)
+        # super().button(button.value)
+        self.button(str(button.value).lower(), delay=2)
 
     # ------------------------------------------------------------------
     # Save-state helpers

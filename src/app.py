@@ -24,11 +24,11 @@ def main() -> None:
         logger=logger,
     )
 
-    autosave = AutosaveService(game, logger,10)
+    autosave = AutosaveService(game, logger,100)
     scene_service = SceneService(game, mqtt_client, logger)
     move_service = BattleService(scene_service, mqtt_client, logger)
 
-    loop = EmulatorLoop(game, [
+    loop = EmulatorLoop(game, services=[
                                 autosave,
                                 scene_service,
                                 move_service

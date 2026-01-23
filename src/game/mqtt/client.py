@@ -77,8 +77,15 @@ class MQTTClient:
         self.logger.info("MQTT connected (rc={})", reason_code.value)
         self._connected.set()
 
-    def _on_disconnect(self, client: mqtt.Client, userdata: Any, reason_code, properties=None):
-        self.logger.warning("MQTT disconnected: {}", reason_code)
+    def _on_disconnect(
+        self,
+        client: mqtt.Client,
+        userdata: Any,
+        disconnect_flags,
+        reason_code,
+        properties=None,
+    ):
+        self.logger.warning("MQTT disconnected: {} (flags={})", reason_code, disconnect_flags)
         self._connected.clear()
 
     def _on_message(self, client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage) -> None:

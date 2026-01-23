@@ -14,7 +14,7 @@ class EmulatorLoop:
     def __init__(
         self,
         session: EmulatorSession,
-        services: Iterable[Service],
+        services: Iterable[Service] = (),
         *,
         button_cooldown: float = 1.0,
         service_tick_interval: float = 0.1,  # <-- nouveau: intervalle des services
@@ -68,17 +68,20 @@ class EmulatorLoop:
             target=self._services_loop, daemon=True
         )
         self._services_thread.start()
-
+        frame = 0
         try:
             while True:
-                running = self.session.tick_once()
+                frame += 1
+
                 now = self.clock()
+                if frame % 60 == 0:
+                    self._maybe_pop_button(now)
+                running = self.session.tick_once()
 
                 if not running:
                     self.session.logger.info("Emulator stopped running")
                     break
 
-                self._maybe_pop_button(now)
 
         finally:
             self.session.logger.info("Emulator loop finished")
