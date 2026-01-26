@@ -12,6 +12,8 @@ from game.core.version import GameVersion, ROM_PATHS, version_from_choice
 from game.data.data import GBAButton
 from game.data.ram_reader import MemoryData, MoveROMBank, SavedPokemonData
 
+from threading import RLock
+
 
 class EmulatorSession(PyBoy):
     """Thin wrapper around :class:`pyboy.PyBoy` adding project specific helpers."""
@@ -26,6 +28,8 @@ class EmulatorSession(PyBoy):
         MemoryData.set_game(self)
         MoveROMBank(self)
         self.is_running = False
+
+        self._tick_lock = RLock()
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -53,24 +57,27 @@ class EmulatorSession(PyBoy):
         if button is GBAButton.PASS:
             return
         # super().button(button.value)
-        self.button(str(button.value).lower(), delay=2)
+        with self._tick_lock:
+            self.button(str(button.value).lower(), delay=2)
 
     # ------------------------------------------------------------------
     # Save-state helpers
     # ------------------------------------------------------------------
     def load_state_from_disk(self) -> bool:
         try:
-            loaded = self.save_state_ma.load(self)
-            if loaded:
-                self.logger.info("Save state loaded from {}", self.save_state_ma.path)
-            return loaded
+            with self._tick_lock:
+                loaded = self.save_state_ma.load(self)
+                if loaded:
+                    self.logger.info("Save state loaded from {}", self.save_state_ma.path)
+                return loaded
         except Exception as exc:  # pragma: no cover - defensive logging
             self.logger.exception("Failed to load save state: {}", exc)
             return False
 
     def save_state_to_disk(self) -> None:
         try:
-            self.save_state_ma.save(self)
+            with self._tick_lock:
+                self.save_state_ma.save(self)
         except Exception as exc:  # pragma: no cover - defensive logging
             self.logger.exception("Failed to save state: {}", exc)
             raise
@@ -79,15 +86,17 @@ class EmulatorSession(PyBoy):
     # Memory helpers
     # ------------------------------------------------------------------
     def read_memory(self, elem: MemoryData) -> bytes:
-        elem = MemoryData.get_pkm_yellow_addresses(elem)
-        return SavedPokemonData.get_data(self, elem)
+        with self._tick_lock:
+            elem = MemoryData.get_pkm_yellow_addresses(elem)
+            return SavedPokemonData.get_data(self, elem)
 
     # ------------------------------------------------------------------
     # Loop helpers
     # ------------------------------------------------------------------
     def tick_once(self) -> bool:
-        self.is_running = self.tick()
-        return self.is_running
+        with self._tick_lock:
+            self.is_running = self.tick()
+            return self.is_running
 
 
 __all__ = ["EmulatorSession"]

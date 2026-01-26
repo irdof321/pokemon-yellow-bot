@@ -101,12 +101,12 @@ class EmulatorLoop:
                 elapsed = self.clock() - time_before_join
                 if self._services_thread.is_alive():
                     self.session.logger.error(
-                        "Services thread did not terminate within timeout (waited %.2f seconds)",
-                        elapsed,
+                        f"Services thread did not terminate within timeout (waited {elapsed:.2f} seconds)"
                     )
                 else:
                     self.session.logger.info(
-                        "Services thread terminated after %.2f seconds", elapsed
+                        f"Services thread did not terminate within timeout (waited %{elapsed:.2f} seconds)"
+                        
                     )
         
 
