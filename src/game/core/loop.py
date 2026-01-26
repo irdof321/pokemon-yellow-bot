@@ -62,10 +62,10 @@ class EmulatorLoop:
 
         self.session.logger.info("Starting emulator loop")
 
-        # Démarrer le thread de services AVANT la boucle de l’émulateur
+        # Start the thread before entering the main loop
         self._stop_services.clear()
         self._services_thread = threading.Thread(
-            target=self._services_loop, daemon=True
+            target=self._services_loop
         )
         self._services_thread.start()
         frame = 0
@@ -88,8 +88,27 @@ class EmulatorLoop:
 
             # Stop the services thread
             self._stop_services.set()
+            for service in self.services:
+                try:
+                    service.quit()
+                except Exception:
+                    self.session.logger.exception(
+                        "Error in service.quit for %r", service
+                    )
             if self._services_thread is not None:
-                self._services_thread.join(timeout=1.0)
+                time_before_join = self.clock()
+                self._services_thread.join(timeout=10.0)
+                elapsed = self.clock() - time_before_join
+                if self._services_thread.is_alive():
+                    self.session.logger.error(
+                        "Services thread did not terminate within timeout (waited %.2f seconds)",
+                        elapsed,
+                    )
+                else:
+                    self.session.logger.info(
+                        "Services thread terminated after %.2f seconds", elapsed
+                    )
+        
 
     # ------------------------------------------------------------------
     def _maybe_pop_button(self, now: float) -> None:
