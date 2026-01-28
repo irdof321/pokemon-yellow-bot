@@ -7,7 +7,7 @@ from game.mqtt.client import MQTTClient
 from game.mqtt.topics import BASE_TOPIC
 from game.services.autosave_service import AutosaveService
 from game.services.battle_service import BattleService
-from game.services.scene_service import SceneService
+from game.services.scene_manger_service import SceneManagerService
 from game.utils.logging_config import setup_logging
 
 SAVE_STATE_PATH = "games/red_test.gb.state"
@@ -25,8 +25,9 @@ def main() -> None:
     )
 
     autosave = AutosaveService(game, logger,100)
-    scene_service = SceneService(game, mqtt_client, logger)
-    move_service = BattleService(scene_service, mqtt_client, logger)
+    scene_service = SceneManagerService(game, mqtt_client, logger)
+    move_service = BattleService(mqtt_client, logger, scene_service)
+
 
     loop = EmulatorLoop(game, services=[
                                 autosave,
