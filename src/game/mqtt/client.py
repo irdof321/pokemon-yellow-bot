@@ -1,6 +1,7 @@
 """High level MQTT client used by the services."""
 from __future__ import annotations
 
+import os
 import threading
 import uuid
 from dataclasses import dataclass
@@ -11,13 +12,13 @@ import paho.mqtt.client as mqtt
 
 @dataclass(slots=True)
 class MQTTConfig:
-    host: str = "test.mosquitto.org"
-    port: int = 1883
+    host: str = os.getenv("MQTT_BROKER", "test.mosquitto.org")
+    port: int = int(os.getenv("MQTT_PORT", "1883"))
     keepalive: int = 30
-    client_id: Optional[str] = None
+    client_id: Optional[str] = os.getenv("MQTT_CLIENT_ID", None)
     use_tls: bool = False
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: Optional[str] = os.getenv("MQTT_USERNAME", None)
+    password: Optional[str] = os.getenv("MQTT_PASSWORD", None)
 
 
 class MQTTClient:

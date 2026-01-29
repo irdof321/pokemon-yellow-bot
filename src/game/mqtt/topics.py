@@ -1,7 +1,8 @@
 """Constants describing the MQTT topics used by the application."""
 from __future__ import annotations
+import os
 
-BASE_TOPIC = "/dforirdod/PKM/"
+BASE_TOPIC = os.getenv("MQTT_BASE_TOPIC", "/dforirdod/PKM/")
 BATTLE_INFO_TOPIC = f"{BASE_TOPIC}battle/info"
 BATTLE_MOVE_TOPIC = f"{BASE_TOPIC}battle/move"
 START_TOPIC = f"{BASE_TOPIC}start"

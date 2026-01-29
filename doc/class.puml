@@ -1,45 +1,20 @@
-@startuml
+@startuml bot
 skinparam linetype ortho
 
+' --- Core / loop ---
 interface Service {
   +start()
   +tick(now: float)
 }
 
-enum GameVersion {
-  RED
-  BLUE
-  YELLOW
-}
-
-enum GBAButton {
-  A
-  B
-  START
-  SELECT
-  UP
-  DOWN
-  LEFT
-  RIGHT
-  L
-  R
-  PASS
-}
-
-class SaveStateManager {
-  +rom_path: str
-  +custom_state_path: Optional[str]
-  +path: Path
-  +load(emulator): bool
-  +save(emulator): None
-}
-
-class "ThreadSafeQueue<T>" as ThreadSafeQueue {
-  -_queue: Deque<T>
-  -_lock: Lock
-  +append(item: T)
-  +pop(): Optional<T>
-  +clear()
+class EmulatorLoop {
+  -session: EmulatorSession
+  -services: List<Service>
+  -button_cooldown: float
+  -clock
+  -_next_button_time: float
+  +run()
+  -_maybe_pop_button(now: float)
 }
 
 class EmulatorSession {
@@ -48,9 +23,10 @@ class EmulatorSession {
   +save_state: SaveStateManager
   +buttons: ThreadSafeQueue<GBAButton>
   +is_running: bool
-  +from_choice(choice): EmulatorSession
+  +from_choice(choice: str)
   +enqueue_button(button: GBAButton)
   +pop_button(): Optional<GBAButton>
+  +clear_buttons()
   +press_button(button: GBAButton)
   +load_state_from_disk(): bool
   +save_state_to_disk()
@@ -58,25 +34,39 @@ class EmulatorSession {
   +tick_once(): bool
 }
 
+class SaveStateManager {
+  +rom_path: str
+  +custom_state_path: Optional[str]
+  +path: Path
+  +load(emulator): bool
+  +save(emulator)
+}
+
+class ThreadSafeQueue<T> {
+  -_queue: Deque<T>
+  -_lock: Lock
+  +append(item: T)
+  +pop(): Optional<T>
+  +clear()
+}
+
+enum GameVersion {
+  RED
+  BLUE
+  YELLOW
+  +rom_path: str
+  +is_yellow: bool
+}
+
 EmulatorSession --|> PyBoy
 EmulatorSession *-- SaveStateManager
 EmulatorSession *-- ThreadSafeQueue
 EmulatorSession --> GameVersion
 EmulatorSession --> GBAButton
-
-class EmulatorLoop {
-  -session: EmulatorSession
-  -services: List<Service>
-  -button_cooldown: float
-  -clock(now): float
-  -_next_button_time: float
-  +run()
-  -_maybe_pop_button(now: float)
-}
-
 EmulatorLoop --> EmulatorSession
 EmulatorLoop --> Service
 
+' --- Services ---
 class AutosaveService {
   -session: EmulatorSession
   -logger
@@ -86,8 +76,37 @@ class AutosaveService {
   +tick(now: float)
 }
 
-AutosaveService --> EmulatorSession
+class SceneService {
+  -session: EmulatorSession
+  -mqtt: MQTTClient
+  -logger
+  -poll_interval: float
+  -_next_poll_at: float
+  -_scene: BattleScene
+  -_last_turn: int
+  +start()
+  +tick(now: float)
+  -_poll_scene(now: float)
+  +current_scene: Optional<BattleScene>
+}
 
+class MoveService {
+  -scene_service: SceneService
+  -mqtt: MQTTClient
+  -logger
+  +start()
+  +tick(now: float)
+  -_on_move_message(topic: str, payload: str)
+}
+
+AutosaveService --> EmulatorSession
+SceneService --> EmulatorSession
+SceneService --> MQTTClient
+SceneService --> BattleScene
+MoveService --> SceneService
+MoveService --> MQTTClient
+
+' --- MQTT ---
 class MQTTConfig {
   +host: str
   +port: int
@@ -114,40 +133,18 @@ class MQTTClient {
 
 MQTTClient *-- MQTTConfig
 
-class SceneService {
-  -session: EmulatorSession
-  -mqtt: MQTTClient
-  -logger
-  -poll_interval: float
-  -_next_poll_at: float
-  -_scene: BattleScene
-  -_last_turn: int
-  +start()
-  +tick(now: float)
-  -_poll_scene(now: float)
-  +current_scene: BattleScene
+' --- Battle / scene ---
+enum MenuLocation {
+  MAIN_MENU_LEFT
+  MAIN_MENU_RIGHT
+  MOVES_SELECTION
+  POKEMON_SELECTION
+  POKEMON_SUB_MENU
 }
-
-SceneService --> EmulatorSession
-SceneService --> MQTTClient
-SceneService --> BattleScene
-
-class BattleService {
-  -scene_service: SceneService
-  -mqtt: MQTTClient
-  -logger
-  +start()
-  +tick(now: float)
-  -_on_move_message(topic: str, payload: str)
-}
-
-BattleService --> SceneService
-BattleService --> MQTTClient
 
 class BattleScene {
   +session: EmulatorSession
   +battle_id: int
-  -logger
   -_menu_state: MenuState
   -_main_menu_attempts: int
   +update()
@@ -164,18 +161,17 @@ class NormalBattle {
   -player_party: List<PartyPokemon>
   -player_active: PlayerPokemonBattle
   -enemy: EnemyPokemon
-  +_refresh()
+  -_refresh()
   +to_dict(): dict
 }
 
 BattleScene <|-- NormalBattle
 BattleScene --> EmulatorSession
 BattleScene --> MenuState
+BattleScene --> MenuLocation
 BattleScene --> GBAButton
-NormalBattle --> PartyPokemon
-NormalBattle --> PlayerPokemonBattle
-NormalBattle --> EnemyPokemon
 
+' --- Menu state ---
 class MenuState {
   +cursor_y_top: int
   +cursor_x_top: int
@@ -191,10 +187,11 @@ class MenuState {
   +cursor_tile_ptr: int
   +first_displayed_item_id: int
   +select_highlight: int
-  +cursor_pos_top: Tuple<int, int>
+  +cursor_pos_top: Tuple[int,int>
   +has_select_highlight: bool
 }
 
+' --- Moves / Pokemon ---
 class Move {
   +name: str
   +id: int
@@ -218,7 +215,7 @@ abstract class Pokemon {
   +current_hp: int
   +max_hp: int
   +status: List[str]
-  +types: Tuple[str,str]
+  +types: Tuple[str,str>
   +moves: List<Move>
   +refresh()
   +to_dict(): Dict
@@ -238,5 +235,44 @@ PlayerPokemonBattle --> Move
 PokemonFactory ..> EnemyPokemon
 PokemonFactory ..> PartyPokemon
 PokemonFactory ..> Pokemon
+
+' --- Memory data model ---
+class MemoryData {
+  +start_address: int
+  +end_address: int
+  +description: str
+  +size(): int
+  +set_shift(shift: int)
+  +set_game(game)
+  +get_pkm_yellow_addresses(data): MemoryData
+}
+
+class DataType {
+  +data_size(elem: MemoryData)
+  +get_data(pyboy, elem: MemoryData): bytes
+}
+
+class SavedPokemonData
+class MainPokemonData
+
+DataType <|-- SavedPokemonData
+DataType <|-- MainPokemonData
+SavedPokemonData --> MemoryData
+MainPokemonData --> MemoryData
+
+' --- Inputs ---
+enum GBAButton {
+  A
+  B
+  START
+  SELECT
+  UP
+  DOWN
+  LEFT
+  RIGHT
+  L
+  R
+  PASS
+}
 
 @enduml

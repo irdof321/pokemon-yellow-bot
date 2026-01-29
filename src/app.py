@@ -1,5 +1,6 @@
 """Application entry-point."""
 from __future__ import annotations
+import os
 
 from game.core.emulator import EmulatorSession
 from game.core.loop import EmulatorLoop
@@ -10,7 +11,7 @@ from game.services.battle_service import BattleService
 from game.services.scene_manger_service import SceneManagerService
 from game.utils.logging_config import setup_logging
 
-SAVE_STATE_PATH = "games/red_test.gb.state"
+SAVE_STATE_PATH = os.getenv("SAVE_STATE_PATH", "games/red_test.gb.state")
 
 def main() -> None:
     logger = setup_logging()
@@ -23,17 +24,14 @@ def main() -> None:
         base_topic=BASE_TOPIC,
         logger=logger,
     )
+    services = []
+    if os.getenv("AUTOLOAD_STATE", "true").lower() == "true":
+        services.append(AutosaveService(game, logger,int(os.getenv("AUTOSAVE_INTERVAL_SECONDS","120"))))
+    services.append(SceneManagerService(game, mqtt_client, logger))
+    services.append(BattleService(mqtt_client, logger, services[-1]))
 
-    autosave = AutosaveService(game, logger,100)
-    scene_service = SceneManagerService(game, mqtt_client, logger)
-    move_service = BattleService(mqtt_client, logger, scene_service)
 
-
-    loop = EmulatorLoop(game, services=[
-                                autosave,
-                                scene_service,
-                                move_service
-                            ])
+    loop = EmulatorLoop(game, services=services)
 
     try:
         loop.run()

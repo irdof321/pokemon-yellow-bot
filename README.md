@@ -1,66 +1,121 @@
 # pokemon-yellow-bot
 
-An experimental Pokémon Yellow bot / framework built on top of the **PyBoy** emulator.  
-It reads game memory (WRAM/HRAM) to understand state and exposes an API that a separate **Pokemon-Client** (POC) can use to drive decisions.
+An **experimental agent framework** built on top of the **PyBoy** emulator, currently targeting **Pokémon Red (Generation I)** as a controlled sandbox.
 
-> Right now it only handles **battles**: selecting a move and executing it.  
-> It **will not** automatically switch Pokémon, use items, or flee.
+This repository is **not** about building a perfect or competitive Pokémon bot.
+It is a **software engineering and agent-architecture project**, using Pokémon as a deterministic legacy environment to experiment with **state reconstruction, decision decoupling, and LLM-driven planning**.
+
+> ⚠️ Classical rule-based or reinforcement learning approaches can play Pokémon **far more efficiently**.  
+> This project deliberately explores a different design space.
 
 ---
 
-## What works today
+## Project intent
 
+This project is designed to explore:
+
+- Interaction with a **legacy deterministic system** via direct memory inspection (WRAM / HRAM)
+- Explicit **game-state reconstruction** from emulator RAM
+- Clear separation between:
+  - Environment perception
+  - State modeling
+  - Decision logic
+  - Action execution
+- Use of a **Large Language Model (LLM)** as a **high-level decision engine / planner**
+- Informal evaluation, during development, of where LLM-based decision-making helps or hurts in a deterministic system
+
+Pokémon is used strictly as a **technical testbed**, not as an end goal.
+
+---
+
+## What this project is NOT
+
+- ❌ Not a competitive Pokémon bot
+- ❌ Not a reinforcement learning benchmark
+- ❌ Not a "perfect play" agent
+- ❌ Not a full game automation system
+
+The focus is **architecture and engineering clarity**, not gameplay performance.
+
+---
+
+## Current scope (v0.1.0)
+
+> Development and testing are currently done on **Pokémon Red only**.
+
+### Supported
 - Launch Pokémon (Gen I) via PyBoy
-- Auto-load the latest **save state** if one exists
-- **Auto-save state every 2 minutes** (configurable)
-- Battle loop (via the client):
+- Auto-load the latest save state (if present)
+- **Auto-save emulator state every 2 minutes** (configurable)
+- Battle-only loop:
   - Move selection
   - Move execution
 
-## What is NOT supported (for now)
-
-- Automatic Pokémon switching
+### Not supported (for now)
+- Pokémon switching
 - Item usage (in or out of battle)
 - Running away
 - Overworld exploration / navigation
-- Team / inventory management
+- Team or inventory management
+
+---
+
+## High-level architecture
+
+```
+PyBoy Emulator
+   ↓
+Memory Reader (WRAM / HRAM)
+   ↓
+Explicit Game State Model
+   ↓
+Decision Engine (rules / heuristics / LLM)
+   ↓
+Command Queue
+   ↓
+Emulator Input Execution
+```
+
+Decision logic is **intentionally decoupled** from emulator control and can live in a separate process.
+
+### UML
+
+- Class diagram: `doc/UML_CLASS.png`
 
 ---
 
 ## Requirements
 
 - Python 3.x
-- A legal copy of a Pokémon ROM (**not included**)
-- Optional: an existing save state (recommended)
+- A legally obtained Pokémon ROM (**not included**)
+- Optional: existing save state (recommended)
 
-> **Legal note:** This repository does not include ROMs or copyrighted game assets.  
+> **Legal note:** This repository does not include ROMs or copyrighted assets.  
 > You must provide your own legally obtained ROM.
 
 ---
 
-## ROM files and game version (important)
+## ROM files and game version
 
-The project selects a game version (`red`, `blue`, `yellow`) and maps it to a ROM path (see `game/core/version.py`).
+At the moment, **only Pokémon Red is validated**.
 
-By default, it expects ROMs here:
+ROM selection is handled in `game/core/version.py`.
 
+Expected paths:
 - `games/PokemonRed.gb`
 - `games/PokemonBleu.gb`
 - `games/PokemonJaune.gb`
 
-If your filenames differ, either rename your ROMs to match or edit the `ROM_PATHS` mapping.
+Even if `blue` or `yellow` exist in the codebase, only `red` is currently tested.
 
-In `app.py`, the game is currently started with:
+In `app.py`:
 ```python
 game = EmulatorSession.from_choice("red", ...)
 ```
-Change `"red"` to `"blue"` or `"yellow"` if needed.
 
 ---
 
 ## Setup
-
-Create and activate a virtual environment, then install dependencies.
 
 ### Windows (PowerShell)
 ```powershell
@@ -80,46 +135,58 @@ pip install -r requirements.txt
 
 ## How to run
 
-### 1) Configure save-state location + autosave interval
-In `app.py` you can set where the save state is stored:
+### 1) Configure save-state + autosave
+In `app.py`:
 ```python
 SAVE_STATE_PATH = "games/red_test.gb.state"
-```
-
-Autosave is handled by `AutosaveService`. Set the interval to **120 seconds** for 2 minutes:
-```python
 autosave = AutosaveService(game, logger, 120)
 ```
 
-- On startup the app tries to load the save state from `SAVE_STATE_PATH`.
-- If the file doesn't exist yet, it will be created once autosave runs.
-
-### 2) Start the emulator + API
-From the repo root:
+### 2) Start emulator + API
 ```bash
 python app.py
 ```
 
-### 3) Start the Pokemon-Client (POC) in a second terminal
-The client demonstrates how to use the API and performs the move-selection logic correctly.
+### 3) Start the Pokemon-Client (POC)
+The client consumes the API and implements decision logic
+(e.g. rules, heuristics, or LLM-based reasoning).
 
-- Pokemon-Client: https://github.com/irdof321/pokemon-client
+Client repo:
+https://github.com/irdof321/pokemon-client
 
 ```bash
-# Example (adjust to your actual client entrypoint)
 python path/to/read.py
 ```
 
-### 4) In-game: enter a battle and let it run
-Once a battle starts, the bot will handle **move selection + execution**.
+### 4) Enter a battle
+Once a battle starts, the framework handles move selection and execution.
 
 ---
 
-## Project notes / references
+## Assistant / pre-prompt (important)
 
-These links helped build the memory-level understanding of Gen I Pokémon and PyBoy’s memory access:
+When using an AI assistant inside this repository, it should follow these rules:
 
-- RAM map (Pokémon Red/Blue): https://datacrystal.tcrf.net/wiki/Pok%C3%A9mon_Red_and_Blue/RAM_map
+- Work strictly within the scope of **Pokémon Red battle logic**
+- Prefer **RAM-driven state checks** over screen-based guesses
+- Keep emulator I/O isolated from decision logic
+- Prefer **B (back)** to exit menus or dialogues unless A is explicitly required
+- Do not claim or optimize for "perfect play"
+- Use the Red/Blue RAM map as reference:
+  https://datacrystal.tcrf.net/wiki/Pok%C3%A9mon_Red_and_Blue/RAM_map
+
+### Pokémon Yellow RAM caveat (for later)
+Pokémon Yellow has a single structural difference:
+- `wGBC` at `$CF1A` (Red/Blue) is moved to HRAM as `hGBC` at `$FFFE`
+- All WRAM addresses **after `$CF1A` are shifted by -1** in Yellow
+
+Unless explicitly stated, **assume Pokémon Red addressing**.
+
+---
+
+## References
+
+- Gen I RAM map (Red/Blue): https://datacrystal.tcrf.net/wiki/Pok%C3%A9mon_Red_and_Blue/RAM_map
 - Pokémon Yellow (Glitch City Wiki): https://glitchcity.wiki/wiki/Pok%C3%A9mon_Yellow
 - PyBoy memory API: https://docs.pyboy.dk/index.html#pyboy.PyBoyMemoryView
 - Gen I character encoding: https://bulbapedia.bulbagarden.net/wiki/Character_encoding_(Generation_I)
@@ -127,8 +194,8 @@ These links helped build the memory-level understanding of Gen I Pokémon and Py
 
 ---
 
-## Quick troubleshooting
+## Status
 
-- **The game won’t start:** verify the ROM file exists at the expected path (see “ROM files and game version”).
-- **No save state loaded:** that’s fine—start a game normally; the autosave will create one later.
-- **Client can’t connect:** verify the API host/port matches what the client expects, and start `app.py` first.
+- Tag: `v0.1.0`
+- Focus: battle-only agent framework
+- Purpose: architecture & decision-system experimentation

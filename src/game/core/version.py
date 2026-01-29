@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
+import os
 from typing import Dict
 
 
@@ -18,11 +19,11 @@ class GameVersion(Enum):
     def is_yellow(self) -> bool:
         return self is GameVersion.YELLOW
 
-
+ROM_BASE_PATH = os.getenv("ROM_BASE_PATH", "games/")
 ROM_PATHS: Dict[GameVersion, str] = {
-    GameVersion.RED: "games/PokemonRed.gb",
-    GameVersion.BLUE: "games/PokemonBleu.gb",
-    GameVersion.YELLOW: "games/PokemonJaune.gb",
+    GameVersion.RED: f"{ROM_BASE_PATH}{os.getenv('PKM_REOM_RED_NAME','PokemonRed.gb')}",
+    GameVersion.BLUE: f"{ROM_BASE_PATH}{os.getenv('PKM_REOM_BLUE_NAME','PokemonBleu.gb')}",
+    GameVersion.YELLOW: f"{ROM_BASE_PATH}{os.getenv('PKM_REOM_YELLOW_NAME','PokemonJaune.gb')}",
 }
 
 
