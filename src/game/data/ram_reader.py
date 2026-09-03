@@ -115,9 +115,9 @@ class MemoryData:
             raise ValueError("No game class set for the memory! Use MemoryData.set_game(game : PyBoy)")
         threshold = 0xCF1A + MemoryData.shift
 
-        if not hasattr(cls.game,"game_version"):
+        if not hasattr(cls.game,"version"):
             return data
-        if cls.game.game_version.is_yellow :
+        if cls.game.version.is_yellow :
             shift_start = -1 if data.start_address >= threshold else 0
             shift_end = -1 if data.end_address >= threshold else 0
             data = MemoryData(
@@ -180,6 +180,36 @@ class SavedPokemonData(DataType):
     Box12                      = MemoryData(0xB5EA, 0xBA4B)  # 0x462 bytes
     GlobalChecksum_3           = MemoryData(0xBA4C, 0xBA4C)  # 0x1 byte
     IndividualChecksums_3      = MemoryData(0xBA4D, 0xBA52)  # 0x6 bytes
+    
+    @staticmethod
+    def start_pokemon_logger(pyboy, pokemon_md: MemoryData, interval_sec: int = 60):
+        """
+        Lance un thread qui logge les infos du Pokémon défini par 'pokemon_md' toutes les 'interval_sec' secondes.
+        Retourne le thread (daemon).
+        """
+        # Déterminer Yellow dynamiquement si possible
+        is_yellow_flag = False
+        try:
+            gv = getattr(pyboy, "version", None)
+            is_yellow_flag = bool(getattr(gv, "is_yellow", False))
+        except Exception:
+            pass
+
+        def _worker():
+            # Import tardif pour éviter import-cycles (pokemon -> ram_reader)
+            from game.data.pokemon import Pokemon
+            while True:
+                try:
+                    mon = Pokemon.from_memory(pyboy, pokemon_md, is_yellow=is_yellow_flag)
+                    # __str__ de ta classe Pokemon est déjà propre ; on logge la ligne lisible
+                    logger.info(str(mon))
+                except Exception as e:
+                    logger.exception(f"[PokemonLogger] failure: {e}")
+                time.sleep(interval_sec)
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+        return t
 
 class MainPokemonData(DataType):
     #WRAM
@@ -716,41 +746,3 @@ class InternalPokemonData(DataType):
 
         
 
-
-# ... (tes imports existants)
-# from game.data.pokemon import Pokemon  # Importé dans la fonction pour éviter les cycles
-
-class SavedPokemonData(DataType):
-    # --- tes MemoryData existants ici ---
-    # Exemple (remplace par ton vrai champ) :
-    # Pokemon1SlotBattle = MemoryData(0xD16B, 0xD192, "First Pokémon battle block")
-
-    @staticmethod
-    def start_pokemon_logger(pyboy, pokemon_md: MemoryData, interval_sec: int = 60):
-        """
-        Lance un thread qui logge les infos du Pokémon défini par 'pokemon_md' toutes les 'interval_sec' secondes.
-        Retourne le thread (daemon).
-        """
-        # Déterminer Yellow dynamiquement si possible
-        is_yellow_flag = False
-        try:
-            gv = getattr(pyboy, "game_version", None)
-            is_yellow_flag = bool(getattr(gv, "is_yellow", False))
-        except Exception:
-            pass
-
-        def _worker():
-            # Import tardif pour éviter import-cycles (pokemon -> ram_reader)
-            from game.data.pokemon import Pokemon
-            while True:
-                try:
-                    mon = Pokemon.from_memory(pyboy, pokemon_md, is_yellow=is_yellow_flag)
-                    # __str__ de ta classe Pokemon est déjà propre ; on logge la ligne lisible
-                    logger.info(str(mon))
-                except Exception as e:
-                    logger.exception(f"[PokemonLogger] failure: {e}")
-                time.sleep(interval_sec)
-
-        t = threading.Thread(target=_worker, daemon=True)
-        t.start()
-        return t

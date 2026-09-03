@@ -36,6 +36,9 @@ class BattleService(Service):
     def tick(self, now: float) -> None:
         # Event-driven (MQTT callback); nothing to do per tick.
         return
+    
+    def quit(self):
+        self.mqtt.unsubscribe(BATTLE_MOVE_TOPIC)
 
     # ------------------------------------------------------------------
     def _on_battle_message(self, topic: str, payload: str) -> None:

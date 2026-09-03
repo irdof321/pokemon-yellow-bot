@@ -470,6 +470,7 @@ class PlayerPokemonBattle(Pokemon):
     def max_hp(self) -> int: 
         return self._u16(MainPokemonData.PlayerMaxHP)
     
+    @property 
     def species_id(self) -> int:
         return self._u8(MainPokemonData.PlayerPokemonNumber)
     

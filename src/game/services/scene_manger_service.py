@@ -47,6 +47,11 @@ class SceneManagerService(Service):
             self.logger.exception("Error while polling scene: {}", exc)
         finally:
             self._next_poll_at = seconds_from_now(self.poll_interval, clock=lambda: now)
+            
+    def quit(self):
+        self._scene = None
+        self.logger.info("Succesfuly quitting SceneManager")
+        return
 
     # ------------------------------------------------------------------
     def _poll(self, now: float) -> None:

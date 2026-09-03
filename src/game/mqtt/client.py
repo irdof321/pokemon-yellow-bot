@@ -59,11 +59,12 @@ class MQTTClient:
             self.logger.warning("MQTT connection timeout")
 
     def disconnect(self) -> None:
-        return
         try:
             self._client.loop_stop()
             if self._client.is_connected():
                 self._client.disconnect()
+        except Exception as e:
+            self.logger.error(f"ERROR when disconnecting from MQTT {e}")
         finally:
             self._connected.clear()
 

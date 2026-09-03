@@ -105,7 +105,7 @@ class EmulatorLoop:
                     )
                 else:
                     self.session.logger.info(
-                        f"Services thread did not terminate within timeout (waited %{elapsed:.2f} seconds)"
+                        f"Services thread terminated within {elapsed:.2f} seconds"
                         
                     )
         
