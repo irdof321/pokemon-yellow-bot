@@ -187,11 +187,13 @@ class BattleScene(Scene):
             if done:
                 self._active_cmd = None
                 self._phase = self._PHASE_IDLE
+                cmd.done_event.set()
             return
 
         self.logger.warning("Unsupported command kind: {}", cmd.kind)
         self._active_cmd = None
         self._phase = self._PHASE_IDLE
+        cmd.done_event.set()
 
     def _execute_move(self, now: float, move_index: int) -> bool:
         """
