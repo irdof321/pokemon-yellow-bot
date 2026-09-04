@@ -1,0 +1,64 @@
+{
+  "description": "Trainer battle vs Blue (rival), early game. Player has only 1 Pokemon (Charmander L9). Used to validate the new opponent full-roster reading (enemy_party) alongside the single active enemy Pokemon (Pidgey).",
+  "game_version": "red",
+  "captured_at": "2026-09-04",
+  "battle_type": "trainer",
+  "notes": [
+    "battle_type inferred (Blue is a named rival trainer, not a wild encounter) -- double-check against MainPokemonData.BattleTypeID (0xD057) once the harness exists.",
+    "Enemy (Pidgey) HP is never shown numerically in Gen 1 -- current_hp/max_hp left null.",
+    "Pidgey types (Normal/Flying) come from the small lookup table image the user provided (labeled 'NORMAL/VOL' in French), not from the in-battle screen itself, which never shows enemy type.",
+    "enemy_party's second slot (Squirtle) was never shown directly in battle (Pidgey is the only active/visible enemy Pokemon) -- name/dex/level/types come from the same external lookup table (Blue's known rival-1 team when the player picks Charmander), not from live RAM/screen data. hp/status/moves are genuinely unknown until the real OpponentPartyPokemon RAM reader exists -- left null/empty rather than guessed.",
+    "This is the SAME Charmander as in the other fixtures but at an earlier point (L9, chronologically before L11) -- Scratch/Growl/Ember moveset already matches the later captures, no inconsistency."
+  ],
+  "expected": {
+    "enemy": {
+      "dex": 16,
+      "name": "Pidgey",
+      "level": 9,
+      "hp": [null, null],
+      "types": ["Normal", "Flying"],
+      "status": ["Healthy"],
+      "moves": []
+    },
+    "enemy_party": [
+      {
+        "dex": 16,
+        "name": "Pidgey",
+        "level": 9,
+        "hp": [null, null],
+        "types": ["Normal", "Flying"],
+        "status": ["Healthy"],
+        "moves": []
+      },
+      {
+        "dex": 7,
+        "name": "Squirtle",
+        "level": 8,
+        "hp": [null, null],
+        "types": ["Water", "Water"],
+        "status": [],
+        "moves": []
+      }
+    ],
+    "on_battle": {
+      "dex": 4,
+      "name": "Charmander",
+      "level": 9,
+      "hp": [27, 27],
+      "types": ["Fire", "Fire"],
+      "status": ["Healthy"],
+      "moves": ["Scratch", "Growl", "Ember"]
+    },
+    "party": [
+      {
+        "dex": 4,
+        "name": "Charmander",
+        "level": 9,
+        "hp": [27, 27],
+        "types": ["Fire", "Fire"],
+        "status": ["Healthy"],
+        "moves": ["Scratch", "Growl", "Ember"]
+      }
+    ]
+  }
+}

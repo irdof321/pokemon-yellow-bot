@@ -202,6 +202,12 @@ class Pokemon(ABC):
                 f"{t1}/{t2} | "
                 f"Status: {', '.join(st) if st else 'Healthy'}")
 
+class PokemonPartyOpponent(Pokemon):
+    # slot -> (block) MemoryData
+    #TODO: code here the opponnent party pokemon
+    SLOT_BLOCKS: ClassVar[Dict[int, 'MemoryData']]  = []
+    nb_opponent_enemy = MainPokemonData.OpponentPartyCount
+    
 
 class PartyPokemon(Pokemon):
     # slot -> (block, nickname) MemoryData
@@ -513,7 +519,6 @@ class PlayerPokemonBattle(Pokemon):
             move_list.append(m)
             
         return move_list
-
 
 class PokemonFactory:
     """Simple constructors for EnemyPokemon and PartyPokemon."""

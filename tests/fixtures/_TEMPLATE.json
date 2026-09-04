@@ -2,6 +2,10 @@
   "description": "one line describing the situation (e.g. wild battle, first slot Pikachu at full HP vs a Rattata)",
   "game_version": "red",
   "captured_at": "YYYY-MM-DD",
+  "battle_type": "wild | trainer",
+  "notes": [
+    "one entry per assumption/inference that wasn't directly read off the screen (e.g. a type not shown for mono-type mons, battle_type guessed from context, external lookups) -- keeps guesses from being mistaken for observations later"
+  ],
   "expected": {
     "enemy": {
       "dex": 0,

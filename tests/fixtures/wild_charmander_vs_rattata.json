@@ -1,0 +1,43 @@
+{
+  "description": "Wild battle vs Rattata, early game. Player has only 1 Pokemon (Charmander L7, hasn't learned Ember yet).",
+  "game_version": "red",
+  "captured_at": "2026-09-04",
+  "battle_type": "wild",
+  "notes": [
+    "battle_type inferred from context (no trainer shown, 'RATTATA :L4' directly) -- double-check against MainPokemonData.BattleTypeID (0xD057) once the harness exists.",
+    "Enemy (Rattata) HP is never shown numerically in Gen 1 -- current_hp/max_hp left null.",
+    "Rattata types (Normal) not visible on screen -- from general game knowledge, not the screenshot.",
+    "Charmander only knows Scratch+Growl here (L7, no Ember yet) -- consistent with the other fixtures where Ember appears once Charmander is L9+, good cross-check across captures rather than a discrepancy."
+  ],
+  "expected": {
+    "enemy": {
+      "dex": 19,
+      "name": "Rattata",
+      "level": 4,
+      "hp": [null, null],
+      "types": ["Normal", "Normal"],
+      "status": ["Healthy"],
+      "moves": []
+    },
+    "on_battle": {
+      "dex": 4,
+      "name": "Charmander",
+      "level": 7,
+      "hp": [23, 23],
+      "types": ["Fire", "Fire"],
+      "status": ["Healthy"],
+      "moves": ["Scratch", "Growl"]
+    },
+    "party": [
+      {
+        "dex": 4,
+        "name": "Charmander",
+        "level": 7,
+        "hp": [23, 23],
+        "types": ["Fire", "Fire"],
+        "status": ["Healthy"],
+        "moves": ["Scratch", "Growl"]
+      }
+    ]
+  }
+}

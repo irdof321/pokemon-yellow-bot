@@ -1,0 +1,62 @@
+{
+  "description": "Trainer battle vs a Youngster (Dresseur Jr.); cursor is on the FIGHT main menu, not yet in the move list. Used to test that selecting move 1 correctly navigates into the move menu and confirms the right slot.",
+  "game_version": "red",
+  "captured_at": "2026-09-04",
+  "battle_type": "trainer",
+  "notes": [
+    "battle_type inferred from the 'Dresseur Jr.' (Youngster) lookup table, not from an in-game trainer-class screen -- should be double-checked against MainPokemonData.BattleTypeID (0xD057: 0=no battle, 1=wild, 2=trainer) once the test harness can read real RAM from this state.",
+    "Enemy HP is never shown numerically in Gen 1 (only a bar) -- current_hp/max_hp left null.",
+    "Type2 not shown on-screen for mono-type Pokemon; duplicated from type1 since that matches real Gen 1 RAM layout (type1 == type2 for mono-type mons).",
+    "External lookup suggests this trainer class (Dresseur Jr. / Youngster) may have a second Pokemon (Sandshrew, L11) after Diglett, but this was not directly observed in-game -- treat as an unconfirmed hint, not an assertion.",
+    "Enemy 'types' was NOT visible on screen (the battle UI never shows the opponent's type) -- Diglett/Ground is from general game knowledge, not from the screenshot. Flagging so this isn't mistaken for an in-game observation."
+  ],
+  "expected": {
+    "enemy": {
+      "dex": 50,
+      "name": "Diglett",
+      "level": 11,
+      "hp": [null, null],
+      "types": ["Ground", "Ground"],
+      "status": ["Healthy"],
+      "moves": []
+    },
+    "on_battle": {
+      "dex": 4,
+      "name": "Charmander",
+      "level": 11,
+      "hp": [32, 32],
+      "types": ["Fire", "Fire"],
+      "status": ["Healthy"],
+      "moves": ["Scratch", "Growl", "Ember"]
+    },
+    "party": [
+      {
+        "dex": 4,
+        "name": "Charmander",
+        "level": 11,
+        "hp": [32, 32],
+        "types": ["Fire", "Fire"],
+        "status": ["Healthy"],
+        "moves": ["Scratch", "Growl", "Ember"]
+      },
+      {
+        "dex": 10,
+        "name": "Caterpie",
+        "level": 4,
+        "hp": [17, 17],
+        "types": ["Bug", "Bug"],
+        "status": ["Healthy"],
+        "moves": ["Tackle", "String Shot"]
+      },
+      {
+        "dex": 25,
+        "name": "Pikachu",
+        "level": 10,
+        "hp": [29, 29],
+        "types": ["Electric", "Electric"],
+        "status": ["Healthy"],
+        "moves": ["Thundershock", "Growl", "Thunder Wave"]
+      }
+    ]
+  }
+}

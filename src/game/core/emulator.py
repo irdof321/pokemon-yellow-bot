@@ -11,6 +11,7 @@ from game.core.state import SaveStateManager
 from game.core.version import GameVersion, ROM_PATHS, version_from_choice
 from game.data.data import GBAButton
 from game.data.ram_reader import MemoryData, MoveROMBank, SavedPokemonData
+from game.utils.time_utils import monotonic
 
 from threading import RLock
 
@@ -83,7 +84,10 @@ class EmulatorSession(PyBoy):
         
     def write_live_state(self, fh) -> None:
         with self._tick_lock:
+            started_at = monotonic()
             self.save_state(fh)
+            elapsed = monotonic() - started_at
+        self.logger.debug("write_live_state (locked section) took {:.4f}s", elapsed)
 
     # ------------------------------------------------------------------
     # Memory helpers

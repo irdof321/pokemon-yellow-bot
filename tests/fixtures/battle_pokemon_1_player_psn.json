@@ -1,0 +1,53 @@
+{
+  "description": "Wild battle vs Weedle; player's active Charmander is poisoned (PSN). Used to test status detection on the player's active Pokemon.",
+  "game_version": "red",
+  "captured_at": "2026-09-04",
+  "battle_type": "wild",
+  "notes": [
+    "battle_type inferred from context (no trainer sprite/name shown, just 'WEEDLE :L9' directly) -- should be double-checked against MainPokemonData.BattleTypeID (0xD057) once the test harness can read real RAM from this state.",
+    "Enemy 'types' (Bug/Poison for Weedle) was NOT visible on screen -- from general game knowledge, not the screenshot.",
+    "on_battle.moves not captured in this screenshot set (only Caterpie's move screen was shown, not Charmander's) -- left empty rather than reused from battle_must_go_on_fight.json, since this is a different save moment and moves weren't independently re-verified here.",
+    "Only 2 party members visible this time (Charmander, Caterpie) vs 3 in battle_must_go_on_fight.json (which also had Pikachu) -- different capture moment in the playthrough, not a discrepancy.",
+    "Caterpie's stats/moves here (L4, HP 7/17, ATK7/DEF8/SPD9/SPC7, Tackle+String Shot) match battle_must_go_on_fight.json exactly except current HP -- good cross-check, same Pokemon."
+  ],
+  "expected": {
+    "enemy": {
+      "dex": 13,
+      "name": "Weedle",
+      "level": 9,
+      "hp": [null, null],
+      "types": ["Bug", "Poison"],
+      "status": ["Healthy"],
+      "moves": []
+    },
+    "on_battle": {
+      "dex": 4,
+      "name": "Charmander",
+      "level": 11,
+      "hp": [29, 32],
+      "types": ["Fire", "Fire"],
+      "status": ["Poisoned"],
+      "moves": []
+    },
+    "party": [
+      {
+        "dex": 4,
+        "name": "Charmander",
+        "level": 11,
+        "hp": [29, 32],
+        "types": ["Fire", "Fire"],
+        "status": ["Poisoned"],
+        "moves": []
+      },
+      {
+        "dex": 10,
+        "name": "Caterpie",
+        "level": 4,
+        "hp": [7, 17],
+        "types": ["Bug", "Bug"],
+        "status": ["Healthy"],
+        "moves": ["Tackle", "String Shot"]
+      }
+    ]
+  }
+}

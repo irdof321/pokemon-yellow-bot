@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from game.core.emulator import EmulatorSession
 from game.services.service import Service
-from game.utils.time_utils import has_expired, seconds_from_now
+from game.utils.time_utils import has_expired, monotonic, seconds_from_now
 
 from threading import Lock
 
@@ -27,8 +27,10 @@ class AutosaveService(Service):
         self.logger.debug("Saving emulator state")
         try:
             with self._save_gate:
+                started_at = monotonic()
                 self.session.save_state_to_disk()
-                self.logger.info("Game state saved")
+                elapsed = monotonic() - started_at
+                self.logger.info("Game state saved in {:.3f}s", elapsed)
         finally:
             self._next_save_at = seconds_from_now(self.interval, clock=lambda: now)
 

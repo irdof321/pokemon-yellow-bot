@@ -1,0 +1,16 @@
+{
+  "description": "Battle has just started (trainer intro dialog 'JR.TRAINER wants to fight!' still on screen), before any Pokemon or menu is shown. Used to test that the code navigates on its own (advancing dialogue) until the FIGHT/ITEM/RUN main menu is reachable -- a behavioral test, not a values test.",
+  "game_version": "red",
+  "battle_type": "trainer",
+  "captured_at": "2026-09-04",
+  "notes": [
+    "No Pokemon ground-truth needed for this fixture -- the active Pokemon on both sides isn't shown yet at this point in the intro sequence.",
+    "battle_type is trainer (a 'JR.TRAINER' intro dialog is shown) -- still worth cross-checking against MainPokemonData.BattleTypeID (0xD057) once the harness exists, but visually unambiguous here (a wild encounter has no trainer-wants-to-fight dialog).",
+    "The party-HP pip rows at top-left (player) and right (trainer) in the intro screen are cosmetic party-status indicators, not read/asserted by this fixture."
+  ],
+  "expected": {
+    "enemy": null,
+    "on_battle": null,
+    "party": []
+  }
+}

@@ -41,10 +41,20 @@ Top-level fields:
 - `game_version` — `"red"`, `"blue"`, or `"yellow"` (which ROM this state was captured on —
   matters for the Yellow RAM shift).
 - `captured_at` — date you captured it (`YYYY-MM-DD`), so stale fixtures are easy to spot later.
+- `battle_type` — `"wild"` or `"trainer"`. Can be inferred from context (a trainer sprite/name
+  screen, an external lookup, etc.) if not directly obvious, but should eventually be
+  cross-checked against `MainPokemonData.BattleTypeID` (`0xD057`: `0` = no battle, `1` = wild,
+  `2` = trainer) once a test harness can read real RAM from the state — that RAM value is the
+  actual ground truth, a screenshot-based guess is just a placeholder until then.
+- `notes` — list of strings, one per assumption/inference that wasn't directly read off the
+  screen (a type not shown for a mono-type mon, `battle_type` guessed from context, an external
+  lookup used to fill a gap). Keeps guesses from being mistaken for verified observations later.
 - `expected.enemy` / `expected.on_battle` / `expected.party` — same shape as `Pokemon.to_dict()`:
   `dex`, `name`, `level`, `hp` (`[current, max]`), `types` (`[type1, type2]`), `status`
   (list of strings), `moves` (list of move names). Only fill in what you actually verified
-  in-game — leave a field out rather than guess.
+  in-game — leave a field `null`/empty rather than guess silently (and if you do have to guess,
+  say so in `notes`). Enemy HP is never shown as a number in Gen 1 (only a bar) — `hp` for
+  `enemy` is expected to stay `[null, null]` in most fixtures.
 
 ## Notes
 
