@@ -65,7 +65,7 @@ class SaveStateManager:
         tmp_path = state_path.with_name(state_path.name + ".tmpwrite")
         try:
             with tmp_path.open("wb") as fh:
-                emulator.save_state(fh)
+                emulator.write_live_state(fh)
                 fh.flush()
                 os.fsync(fh.fileno())
             # Atomically replace the old .state with the new one

@@ -34,14 +34,17 @@ appuie les boutons en attente              Services.tick() toutes les 0.1s
 
 Le client de décision (LLM, dans `../pokemon-client`) n'est **pas** dans ce repo : il s'abonne à `battle/info` sur MQTT, décide, et publie sur `battle/move`. Ce repo ne fait que lire l'état du jeu et exécuter les commandes reçues — aucune logique de décision ici (cf. `Conventions` du CLAUDE.md).
 
+Depuis peu, un second chemin existe **en parallèle** du flux MQTT ci-dessus, sans le remplacer : `SceneController` (`game/scenes/scene_controller.py`) est une façade synchrone sur ce même `BattleScene` — `step(cmd) -> observation, reward, done, info` (style Gym) et `.observation` en lecture seule — pour un futur appelant qui peut se permettre d'attendre une réponse directe (FastAPI, script Python d'entraînement), sans passer par un aller-retour MQTT. Les deux chemins partagent le même `BattleScene`, ne se connaissent pas l'un l'autre, et aucun n'est prioritaire sur l'autre (voir "Points d'attention actuels" plus bas).
+
 ## Point d'entrée
 
 `src/app.py` :
 1. `setup_logging()` — configure Loguru (fichier tournant + stdout).
 2. `EmulatorSession.from_choice("red", ...)` — démarre PyBoy avec la ROM Red (choix actuellement en dur, voir README § ROM files).
 3. Crée le `MQTTClient` (broker public `test.mosquitto.org` par défaut).
-4. Assemble la liste `services` : `AutosaveService` (si `AUTOLOAD_STATE=true`), `SceneManagerService`, puis `BattleService` (qui reçoit `SceneManagerService` comme `scene_provider` pour accéder à `current_scene`).
-5. Construit `EmulatorLoop` et l'exécute (`loop.run()`), avec `mqtt_client.disconnect()` en `finally`.
+4. Assemble la liste `services` : `AutosaveService` (si `AUTOLOAD_STATE=true`), `SceneManagerService` (assigné à la variable `scene_manager`, réutilisée plutôt qu'indexée via `services[-1]`), puis `BattleService` (reçoit `scene_manager` comme `scene_provider`).
+5. Instancie `SceneController(scene_manager, logger)` — même `scene_manager` que `BattleService`. Pas encore consommé par quoi que ce soit ; prêt pour un futur appelant synchrone (FastAPI, script direct).
+6. Construit `EmulatorLoop` et l'exécute (`loop.run()`), avec `mqtt_client.disconnect()` en `finally`.
 
 ## `game/core/` — émulateur et boucle
 
@@ -106,11 +109,14 @@ Au-dessus de ces tables d'adresses, `helpers.py` fournit les primitives de lectu
   - `enqueue_command(cmd)` : appelé par `BattleService` pour empiler une `BattleCommand` (thread-safe, `ThreadSafeQueue`).
   - `_execute_move(now, move_index)` : automate à deux phases — ouvrir/naviguer jusqu'au bon move (`select_move`), puis avancer les dialogues post-action jusqu'à retrouver le menu principal (`post_dialog`). Retourne `True` quand la commande est terminée.
   - `is_ready()` : `True` seulement quand on est positionné sur le menu principal, item 0 — c'est la condition utilisée par `SceneManagerService` pour savoir quand publier un snapshot cohérent sur MQTT.
+  - `_drive_commands()` pose aussi `cmd.done_event.set()` sur la commande active dès qu'elle se termine (succès ou `kind` non supporté). C'est ce signal précis — pas `is_ready()` — qu'attend `SceneController.step()` : `is_ready()` peut déjà être vrai avant même que la commande soit prise en compte (la scène "se repose" au menu principal entre deux tours), donc s'y fier créerait un faux positif.
 
   - **`NormalBattle(BattleScene)`** : implémentation concrète — construit `player_party` (6× `PartyPokemon`), `player_active` (`PlayerPokemonBattle`) et `enemy` (`EnemyPokemon`), et fournit `to_dict()` pour la sérialisation MQTT.
   - `create_battle_scene(session, battle_id)` : factory, renvoie toujours un `NormalBattle` aujourd'hui (point d'extension si d'autres types de combat sont ajoutés).
 
-- **`commands.py` — `BattleCommand`** : dataclass frozen (`kind`, `move_index`, `request_id`, `created_at`). Seul `kind="move"` est supporté pour l'instant.
+- **`commands.py` — `BattleCommand`** : dataclass frozen (`kind`, `move_index`, `request_id`, `created_at`, `done_event`). Seul `kind="move"` est supporté pour l'instant. `done_event` (`threading.Event`, une instance neuve par commande via `default_factory` — surtout pas une valeur par défaut partagée) est posé par `BattleScene._drive_commands()` quand *cette* commande précise se termine.
+
+- **`scene_controller.py` — `SceneController`** : façade synchrone au-dessus de `Scene` — `step(cmd) -> (observation, reward, done, info)` (style Gym) et `.observation` (lecture seule, sans agir). Contrairement à `BattleService` (fire-and-forget via MQTT), `step()` bloque l'appelant sur `cmd.done_event.wait(timeout)` jusqu'à ce que la commande soit terminée, puis renvoie `scene.to_dict()`. `reward`/`done` sont des placeholders (`0.0`/`False`) — pas de RL pour l'instant, décision volontaire (YAGNI). Prend un `SceneProvider` (`Protocol` structurel : n'importe quel objet avec `.current_scene` convient, sans lien d'héritage — `SceneManagerService` le remplit déjà tel quel). **N'est pas un `Service`** : rien ne le tick, il est appelé à la demande par un appelant externe (futur FastAPI, script Python) — voir `app.py`.
 
 - **`common.py`** : enum `BATTLE_ACTION` (`MOVE`/`ITEM`/`PKM`/`RUN` — seul `MOVE` est câblé) + `str_to_battle_action`.
 
@@ -137,6 +143,10 @@ Toutes héritent implicitement du `Protocol` `Service` (`service.py` : `start()`
 - `time_utils.py` : `monotonic()`, `seconds_from_now()`, `has_expired()` — utilisés partout pour le scheduling sans bloquer (pattern "deadline" plutôt que `sleep`).
 - `logging_config.py` : configure Loguru (fichier tournant hebdo + stdout), retourne le logger partagé injecté dans toutes les classes (`self.logger`).
 
+## Tests
+
+`pytest.ini` (racine, `pythonpath = src`) + `tests/test_scene_controller.py` — premier test du projet (ceux mentionnés dans le roadmap d'origine ont été perdus, jamais commités). Teste `SceneController` contre un faux `Scene` minimal (pas besoin de PyBoy/ROM), y compris le cas qui a motivé le design du `done_event` : `step()` ne doit pas se fier à un `is_ready()` déjà vrai avant même que la commande soit prise en compte.
+
 ## Concurrence — ce qu'il faut garder en tête
 
 Deux threads tournent en permanence pendant `loop.run()` :
@@ -152,4 +162,5 @@ Ce document décrit l'état du code, pas son historique de bugs — pour la list
 Quelques choses à garder en tête en lisant le code :
 - `MemoryData.game` et `Pokemon.game` sont des **singletons de classe** (un seul jeu actif à la fois) — logique pour ce projet (un seul émulateur), mais à ne pas reproduire par réflexe ailleurs.
 - Le choix Red/Blue/Yellow est actuellement câblé en dur dans `app.py` (`from_choice("red", ...)`) — le `.env` déclare des variables pour les noms de ROM mais rien ne lit le choix de version depuis l'environnement.
+- `SceneController` et `BattleService` peuvent tous les deux enfiler des commandes dans la même `BattleScene` en même temps — aucune corruption (`ThreadSafeQueue` protège l'accès concurrent), mais aucune notion d'exclusivité/propriétaire non plus. Pas un problème tant qu'un seul consommateur pilote un combat à la fois (le cas aujourd'hui : rien n'appelle encore `SceneController.step()` en pratique) ; à surveiller le jour où un deuxième consommateur réel (FastAPI, entraînement) tournera en parallèle du client MQTT.
 - `doc/menu.pptx` et `doc/UML_CLASS.png` / `doc/class.puml` contiennent des schémas visuels complémentaires à ce document (mapping des menus, diagramme de classes).

@@ -76,11 +76,14 @@ class EmulatorSession(PyBoy):
 
     def save_state_to_disk(self) -> None:
         try:
-            with self._tick_lock:
-                self.save_state_ma.save(self)
+            self.save_state_ma.save(self)
         except Exception as exc:  # pragma: no cover - defensive logging
             self.logger.exception("Failed to save state: {}", exc)
             raise
+        
+    def write_live_state(self, fh) -> None:
+        with self._tick_lock:
+            self.save_state(fh)
 
     # ------------------------------------------------------------------
     # Memory helpers

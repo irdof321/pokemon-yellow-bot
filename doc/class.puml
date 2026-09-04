@@ -171,6 +171,32 @@ BattleScene --> MenuState
 BattleScene --> MenuLocation
 BattleScene --> GBAButton
 
+' --- Commands / synchronous controller (added alongside MQTT, doesn't replace it) ---
+class BattleCommand {
+  +kind: str
+  +move_index: int
+  +request_id: Optional[str]
+  +created_at: float
+  +done_event: Event
+}
+
+interface SceneProvider {
+  +current_scene: Optional<BattleScene>
+}
+
+class SceneController {
+  -scene_provider: SceneProvider
+  -logger
+  -default_timeout: float
+  +step(cmd: BattleCommand, timeout: Optional[float]): Tuple<dict, float, bool, dict>
+  +observation: dict
+}
+
+BattleScene --> BattleCommand
+SceneController --> SceneProvider
+SceneController --> BattleCommand
+SceneController ..> BattleScene
+
 ' --- Menu state ---
 class MenuState {
   +cursor_y_top: int
