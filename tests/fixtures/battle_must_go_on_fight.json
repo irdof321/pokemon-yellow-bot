@@ -7,8 +7,8 @@
     "battle_type inferred from the 'Dresseur Jr.' (Youngster) lookup table, not from an in-game trainer-class screen -- should be double-checked against MainPokemonData.BattleTypeID (0xD057: 0=no battle, 1=wild, 2=trainer) once the test harness can read real RAM from this state.",
     "Enemy HP is never shown numerically in Gen 1 (only a bar) -- current_hp/max_hp left null.",
     "Type2 not shown on-screen for mono-type Pokemon; duplicated from type1 since that matches real Gen 1 RAM layout (type1 == type2 for mono-type mons).",
-    "External lookup suggests this trainer class (Dresseur Jr. / Youngster) may have a second Pokemon (Sandshrew, L11) after Diglett, but this was not directly observed in-game -- treat as an unconfirmed hint, not an assertion.",
-    "Enemy 'types' was NOT visible on screen (the battle UI never shows the opponent's type) -- Diglett/Ground is from general game knowledge, not from the screenshot. Flagging so this isn't mistaken for an in-game observation."
+    "Enemy 'types' was NOT visible on screen (the battle UI never shows the opponent's type) -- Diglett/Ground is from general game knowledge, not from the screenshot. Flagging so this isn't mistaken for an in-game observation.",
+    "CONFIRMED by real RAM read (BattleScene.to_dict()['enemy_party'] via OpponentPartyPokemon + OpponentPartyCount, 2026-09-07): enemy_party is exactly [Diglett, Sandshrew] -- the external 'Dresseur Jr.' lookup table was right, this is no longer just an unconfirmed hint. Sandshrew's exact level/HP/types/moves are still unverified (only its presence and species are confirmed) -- treat those specific fields as placeholders, not observations."
   ],
   "expected": {
     "enemy": {
@@ -20,6 +20,26 @@
       "status": ["Healthy"],
       "moves": []
     },
+    "enemy_party": [
+      {
+        "dex": 50,
+        "name": "Diglett",
+        "level": 11,
+        "hp": [null, null],
+        "types": ["Ground", "Ground"],
+        "status": ["Healthy"],
+        "moves": []
+      },
+      {
+        "dex": 27,
+        "name": "Sandshrew",
+        "level": 11,
+        "hp": [null, null],
+        "types": ["Ground", "Ground"],
+        "status": [],
+        "moves": []
+      }
+    ],
     "on_battle": {
       "dex": 4,
       "name": "Charmander",

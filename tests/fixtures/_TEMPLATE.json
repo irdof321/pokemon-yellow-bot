@@ -16,6 +16,17 @@
       "status": ["Healthy"],
       "moves": []
     },
+    "enemy_party": [
+      {
+        "dex": 0,
+        "name": "",
+        "level": 0,
+        "hp": [0, 0],
+        "types": ["", ""],
+        "status": ["Healthy"],
+        "moves": []
+      }
+    ],
     "on_battle": {
       "dex": 0,
       "name": "",

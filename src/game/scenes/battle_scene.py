@@ -11,10 +11,67 @@ from game.core.queue import ThreadSafeQueue
 from game.data.data import GBAButton
 from game.data.helpers import read_u8
 from game.data.menu import MenuState as MenuDumpState, get_menu_state
-from game.data.pokemon import EnemyPokemon, PartyPokemon, PlayerPokemonBattle
-from game.data.ram_reader import MainPokemonData
+from game.data.pokemon import EnemyPokemon, PartyPokemon, PlayerPokemonBattle, OpponentPartyPokemon
+from game.data.ram_reader import MainPokemonData, MemoryData
 from game.scenes.commands import BattleCommand
 from game.scenes.scene import Scene
+
+
+class BattleType(Enum):
+    """MainPokemonData.BattleTypeID (0xD057) -- empirically confirmed values only.
+    A gym leader battle (Brock) reads TRAINER (2), same as any other trainer --
+    there is no separate value for it at this byte. Don't add members here on
+    a guess; confirm against a real fixture first (see test_battle_type_byte.py)."""
+    NONE = 0
+    WILD = 1
+    TRAINER = 2
+
+
+class BattleSubType(Enum):
+    """MainPokemonData.BattleSubType (0xD05A) -- "Normal, Safari Zone, Old Man
+    battle...". Only NORMAL (0) is empirically confirmed so far (wild/trainer/
+    gym leader fixtures all read 0). Add SAFARI_ZONE/OLD_MAN_BATTLE here only
+    once captured and verified against a real fixture -- see
+    test_battle_type_byte.py, same discipline as BattleType."""
+    NORMAL = 0
+
+
+@dataclass
+class BattleContext:
+    """Resolved once, at battle-scene creation time, from three RAM bytes that
+    don't change mid-battle. See read_battle_context()."""
+    battle_type: BattleType
+    battle_sub_type: BattleSubType
+    trainer_class: Optional[int]  # MainPokemonData.EngagedTrainerClass (0xCD2D) -- only meaningful when battle_type is TRAINER
+
+
+def read_battle_context(session: EmulatorSession) -> BattleContext:
+    raw_type = session.read_memory(MainPokemonData.BattleTypeID)
+    raw_value = raw_type[0] if raw_type else 0
+    try:
+        battle_type = BattleType(raw_value)
+    except ValueError:
+        session.logger.warning("Unknown BattleTypeID value: {}", raw_value)
+        battle_type = BattleType.NONE
+
+    raw_sub_type = session.read_memory(MainPokemonData.BattleSubType)
+    raw_sub_value = raw_sub_type[0] if raw_sub_type else 0
+    try:
+        battle_sub_type = BattleSubType(raw_sub_value)
+    except ValueError:
+        session.logger.warning(
+            "Unknown BattleSubType value: {} -- not yet a confirmed member (only NORMAL=0 is), "
+            "defaulting to NORMAL. Capture this as a fixture and add it to the enum.",
+            raw_sub_value,
+        )
+        battle_sub_type = BattleSubType.NORMAL
+
+    trainer_class: Optional[int] = None
+    if battle_type == BattleType.TRAINER:
+        raw_trainer_class = session.read_memory(MainPokemonData.EngagedTrainerClass)
+        trainer_class = raw_trainer_class[0] if raw_trainer_class else None
+
+    return BattleContext(battle_type=battle_type, battle_sub_type=battle_sub_type, trainer_class=trainer_class)
 
 
 # ----------------------------------------------------------------------
@@ -38,6 +95,10 @@ class BattleScene(Scene):
     _PHASE_IDLE = "idle"
     _PHASE_SELECT_MOVE = "select_move"
     _PHASE_POST_DIALOG = "post_dialog"
+    
+    
+    battle_id: int
+    battle_context: Optional[BattleContext] = None
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -55,6 +116,33 @@ class BattleScene(Scene):
 
         # state machine phase
         self._phase: str = self._PHASE_IDLE
+        
+        party_count = self._read_party_count(MainPokemonData.PartyCount)
+        self.player_party: List[PartyPokemon] = [
+            PartyPokemon(self.session, slot, self.session.version.is_yellow) for slot in range(1, party_count + 1)
+        ]
+        self.player_active = PlayerPokemonBattle(self.session, self.session.version.is_yellow)
+        self.enemy = EnemyPokemon(self.session, self.session.version.is_yellow)
+        self.enemy_party: List[OpponentPartyPokemon] = []
+        if self.battle_context is not None and self.battle_context.battle_type == BattleType.TRAINER:
+            enemy_count = self._read_party_count(MainPokemonData.OpponentPartyCount)
+            self.enemy_party = [
+                OpponentPartyPokemon(self.session, slot, self.session.version.is_yellow) for slot in range(1, enemy_count + 1)
+            ]
+        else:
+            self.enemy_party = [self.enemy]
+
+    def _read_party_count(self, field: MemoryData, max_count: int = 6) -> int:
+        """Reads a *PartyCount-style byte, clamped to [0, max_count]. Fails safe:
+        if it can't be read, returns 0 rather than assuming the max -- better to
+        under-report than to expose a slot that might not actually exist."""
+        raw = self.session.read_memory(field)
+        if not raw:
+            self.logger.warning("Could not read party count from {}", field)
+            return 0
+        return max(0, min(raw[0], max_count))
+
+
 
     # ------------------------------------------------------------------
     # API used by BattleService
@@ -270,12 +358,13 @@ class BattleScene(Scene):
         # readiness for publishing: strict "ready main menu"
         return self.is_ready_main_menu
 
+
     def _refresh(self) -> None:
-        """
-        Subclasses refresh battle data here (pokemon stats etc).
-        Keep it data-only. Do NOT enqueue buttons here.
-        """
-        return
+        for pokemon in self.player_party + self.enemy_party:
+            pokemon.refresh()
+        self.player_active.refresh()
+        self.enemy.refresh()
+
 
     @property
     def turn_counter(self) -> int:
@@ -284,34 +373,23 @@ class BattleScene(Scene):
         return read_u8(data, (0, 1)) if data else 0
 
     def to_dict(self) -> dict:
-        raise NotImplementedError
-
-
-class NormalBattle(BattleScene):
-    def __post_init__(self) -> None:
-        super().__post_init__()
-        self.player_party: List[PartyPokemon] = [
-            PartyPokemon(self.session, slot, self.session.version.is_yellow) for slot in range(1, 7)
-        ]
-        self.player_active = PlayerPokemonBattle(self.session, self.session.version.is_yellow)
-        self.enemy = EnemyPokemon(self.session, self.session.version.is_yellow)
-
-    def _refresh(self) -> None:
-        for pokemon in self.player_party:
-            pokemon.refresh()
-        self.player_active.refresh()
-        self.enemy.refresh()
-
-    def to_dict(self) -> dict:
         return {
+            "battle_type": self.battle_context.battle_type.name.lower() if self.battle_context else None,
             "enemy": self.enemy.to_dict(),
+            "enemy_party": [p.to_dict() for p in self.enemy_party],
             "on_battle": self.player_active.to_dict(),
             "party": [p.to_dict() for p in self.player_party],
         }
+        
+
+
+
+
 
 
 def create_battle_scene(session: EmulatorSession, battle_id: int) -> BattleScene:
-    return NormalBattle(session, battle_id)
+    context = read_battle_context(session)
+    return BattleScene(session, battle_id, context)
 
 
-__all__ = ["BattleScene", "NormalBattle", "create_battle_scene", "MenuLocation"]
+__all__ = ["BattleScene", "BattleType", "BattleSubType", "BattleContext", "read_battle_context", "create_battle_scene", "MenuLocation"]

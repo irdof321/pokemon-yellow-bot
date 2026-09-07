@@ -9,7 +9,8 @@
     "Rattata types (Normal) not visible on screen -- from general game knowledge, not the screenshot.",
     "Pikachu only knows Thundershock+Growl here (L3, PP 25/30 on Thundershock -- already used a few times) -- Thunder Wave appears later (by L10, per battle_must_go_on_fight.json), consistent progression not a discrepancy.",
     "Caterpie and Charmander stats/moves here match the other fixtures exactly (same Pokemon, same IDNo 08823/OT RED) -- good cross-check across captures.",
-    "Charmander (L11, HP32/32, Scratch/Growl/Ember) is identical to battle_must_go_on_fight.json's Charmander -- likely a nearby save-moment in the playthrough, Pikachu just happened to be much lower level (L3) at this particular capture, caught more recently."
+    "Charmander (L11, HP32/32, Scratch/Growl/Ember) is identical to battle_must_go_on_fight.json's Charmander -- likely a nearby save-moment in the playthrough, Pikachu just happened to be much lower level (L3) at this particular capture, caught more recently.",
+    "enemy_party is a 1-element list mirroring 'enemy' -- wild battles only ever have a single opposing Pokemon, per the unified BattleScene.to_dict() contract (enemy_party always present, length 1 for wild, up to 6 for trainer)."
   ],
   "expected": {
     "enemy": {
@@ -21,6 +22,17 @@
       "status": ["Paralyzed"],
       "moves": []
     },
+    "enemy_party": [
+      {
+        "dex": 19,
+        "name": "Rattata",
+        "level": 4,
+        "hp": [null, null],
+        "types": ["Normal", "Normal"],
+        "status": ["Paralyzed"],
+        "moves": []
+      }
+    ],
     "on_battle": {
       "dex": 25,
       "name": "Pikachu",

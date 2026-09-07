@@ -8,7 +8,8 @@
     "Enemy (Diglett) HP is never shown numerically in Gen 1 -- current_hp/max_hp left null.",
     "Enemy types (Ground) not visible on screen -- from general game knowledge, matches battle_must_go_on_fight.json's Diglett.",
     "Party (Caterpie, Pikachu L10 29/29) is IDENTICAL to battle_must_go_on_fight.json except Charmander is one level higher here (L12/34 HP vs L11/32 HP) -- almost certainly the same playthrough moment, captured slightly later.",
-    "IMPORTANT for the move-index tests: Charmander's move slot 4 is empty ('_'/'--' shown in-game) -- move_index=4 is expected to be an invalid/non-existent slot for this fixture, by design."
+    "IMPORTANT for the move-index tests: Charmander's move slot 4 is empty ('_'/'--' shown in-game) -- move_index=4 is expected to be an invalid/non-existent slot for this fixture, by design.",
+    "CONFIRMED by real RAM read (BattleScene.to_dict()['enemy_party'] via OpponentPartyPokemon + OpponentPartyCount, 2026-09-07): enemy_party is exactly [Diglett, Sandshrew], verified independently on this exact .state file (not just assumed from battle_must_go_on_fight.json). Sandshrew's exact level/HP/types/moves are still unverified -- treat those specific fields as placeholders."
   ],
   "expected": {
     "enemy": {
@@ -20,6 +21,26 @@
       "status": ["Healthy"],
       "moves": []
     },
+    "enemy_party": [
+      {
+        "dex": 50,
+        "name": "Diglett",
+        "level": 11,
+        "hp": [null, null],
+        "types": ["Ground", "Ground"],
+        "status": ["Healthy"],
+        "moves": []
+      },
+      {
+        "dex": 27,
+        "name": "Sandshrew",
+        "level": 11,
+        "hp": [null, null],
+        "types": ["Ground", "Ground"],
+        "status": [],
+        "moves": []
+      }
+    ],
     "on_battle": {
       "dex": 4,
       "name": "Charmander",

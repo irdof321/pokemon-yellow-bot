@@ -9,7 +9,6 @@ from game.core.emulator import EmulatorSession
 @dataclass
 class Scene:
     session: EmulatorSession
-    battle_id: int
 
     def __post_init__(self) -> None:
         self.logger = self.session.logger

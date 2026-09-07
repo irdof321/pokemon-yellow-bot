@@ -202,16 +202,10 @@ class Pokemon(ABC):
                 f"{t1}/{t2} | "
                 f"Status: {', '.join(st) if st else 'Healthy'}")
 
-class PokemonPartyOpponent(Pokemon):
-    # slot -> (block) MemoryData
-    #TODO: code here the opponnent party pokemon
-    SLOT_BLOCKS: ClassVar[Dict[int, 'MemoryData']]  = []
-    nb_opponent_enemy = MainPokemonData.OpponentPartyCount
-    
 
 class PartyPokemon(Pokemon):
     # slot -> (block, nickname) MemoryData
-    SLOT_BLOCKS: ClassVar[Dict[int, Tuple['MemoryData','MemoryData']]] = {
+    SLOT_BLOCKS: ClassVar[Dict[int, Tuple['MemoryData', 'MemoryData']]] = {
         1: (MainPokemonData.Pokemon1, MainPokemonData.Nickname1),
         2: (MainPokemonData.Pokemon2, MainPokemonData.Nickname2),
         3: (MainPokemonData.Pokemon3, MainPokemonData.Nickname3),
@@ -394,9 +388,19 @@ class PartyPokemon(Pokemon):
             f"L{self.level} | HP {self.current_hp}/{self.max_hp} | "
             f"{t1}/{t2} | Status: {', '.join(st) if st else 'Healthy'}"
         )
-    
 
 
+class OpponentPartyPokemon(PartyPokemon):
+    """Same 44-byte layout as PartyPokemon, but reading the opponent trainer's
+    roster block (0xD8A4-0xD9AB) instead of the player's own party."""
+    SLOT_BLOCKS: ClassVar[Dict[int, Tuple['MemoryData', 'MemoryData']]] = {
+        1: (MainPokemonData.OpponentPokemonData1, MainPokemonData.Nickname1_Alt),
+        2: (MainPokemonData.OpponentPokemonData2, MainPokemonData.Nickname2_Alt),
+        3: (MainPokemonData.OpponentPokemonData3, MainPokemonData.Nickname3_Alt),
+        4: (MainPokemonData.OpponentPokemonData4, MainPokemonData.Nickname4_Alt),
+        5: (MainPokemonData.OpponentPokemonData5, MainPokemonData.Nickname5_Alt),
+        6: (MainPokemonData.OpponentPokemonData6, MainPokemonData.Nickname6_Alt),
+    }
 
 
 

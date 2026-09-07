@@ -8,7 +8,8 @@
     "Enemy 'types' (Bug/Poison for Weedle) was NOT visible on screen -- from general game knowledge, not the screenshot.",
     "on_battle.moves not captured in this screenshot set (only Caterpie's move screen was shown, not Charmander's) -- left empty rather than reused from battle_must_go_on_fight.json, since this is a different save moment and moves weren't independently re-verified here.",
     "Only 2 party members visible this time (Charmander, Caterpie) vs 3 in battle_must_go_on_fight.json (which also had Pikachu) -- different capture moment in the playthrough, not a discrepancy.",
-    "Caterpie's stats/moves here (L4, HP 7/17, ATK7/DEF8/SPD9/SPC7, Tackle+String Shot) match battle_must_go_on_fight.json exactly except current HP -- good cross-check, same Pokemon."
+    "Caterpie's stats/moves here (L4, HP 7/17, ATK7/DEF8/SPD9/SPC7, Tackle+String Shot) match battle_must_go_on_fight.json exactly except current HP -- good cross-check, same Pokemon.",
+    "enemy_party is a 1-element list mirroring 'enemy' -- wild battles only ever have a single opposing Pokemon, per the unified BattleScene.to_dict() contract (enemy_party always present, length 1 for wild, up to 6 for trainer)."
   ],
   "expected": {
     "enemy": {
@@ -20,6 +21,17 @@
       "status": ["Healthy"],
       "moves": []
     },
+    "enemy_party": [
+      {
+        "dex": 13,
+        "name": "Weedle",
+        "level": 9,
+        "hp": [null, null],
+        "types": ["Bug", "Poison"],
+        "status": ["Healthy"],
+        "moves": []
+      }
+    ],
     "on_battle": {
       "dex": 4,
       "name": "Charmander",

@@ -642,8 +642,16 @@ class MainPokemonData(DataType):
     OpponentPokemon5     = MemoryData(0xD8A1, 0xD8A1, "Opponent's Pokémon 5 ID")
     OpponentPokemon6     = MemoryData(0xD8A2, 0xD8A2, "Opponent's Pokémon 6 ID")
     OpponentPartyEnd     = MemoryData(0xD8A3, 0xD8A3, "End of opponent's Pokémon list marker")
+    
+    # Opponent data Pokemon
+    
+    OpponentPokemonData1 = MemoryData(0xD8A4, 0xD8CF, "Opponent's first Pokémon data block (44 bytes)")
+    OpponentPokemonData2 = MemoryData(0xD8D0, 0xD8FB, "Opponent's second Pokémon data block (44 bytes)")
+    OpponentPokemonData3 = MemoryData(0xD8FC, 0xD927, "Opponent's third Pokémon data block (44 bytes)")
+    OpponentPokemonData4 = MemoryData(0xD928, 0xD953, "Opponent's fourth Pokémon data block (44 bytes)")
+    OpponentPokemonData5 = MemoryData(0xD954, 0xD97F, "Opponent's fifth Pokémon data block (44 bytes)")
+    OpponentPokemonData6 = MemoryData(0xD980, 0xD9AB, "Opponent's sixth Pokémon data block (44 bytes)")
 
-    OpponentPokemons_Data = MemoryData(0xD8A4, 0xD9AB, "Opponent's Pokémon data blocks (27 bytes each, up to 6 Pokémon)")
     
     # Trainer name
     TrainerName1_Alt = MemoryData(0xD9AC, 0xD9B6, "Trainer name for 1st (alternate block)")

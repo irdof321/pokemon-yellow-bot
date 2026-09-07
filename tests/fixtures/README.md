@@ -49,6 +49,10 @@ Top-level fields:
 - `notes` — list of strings, one per assumption/inference that wasn't directly read off the
   screen (a type not shown for a mono-type mon, `battle_type` guessed from context, an external
   lookup used to fill a gap). Keeps guesses from being mistaken for verified observations later.
+- `expected.enemy_party` — list of Pokemon dicts (same shape as `enemy`), the full opposing roster.
+  `BattleScene.to_dict()` always includes this key: length 1 for a wild battle (mirroring `enemy`),
+  up to 6 for a trainer battle. Never omit it or leave it empty — a consumer should be able to
+  tell wild vs. trainer from `battle_type` alone, without special-casing a missing field.
 - `expected.enemy` / `expected.on_battle` / `expected.party` — same shape as `Pokemon.to_dict()`:
   `dex`, `name`, `level`, `hp` (`[current, max]`), `types` (`[type1, type2]`), `status`
   (list of strings), `moves` (list of move names). Only fill in what you actually verified
