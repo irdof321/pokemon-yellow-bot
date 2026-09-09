@@ -4,8 +4,9 @@ from typing import Literal, Optional
 
 @dataclass(frozen=True)
 class BattleCommand:
-    kind: Literal["move"]  # later: "item", "switch", ...
-    move_index: int
+    kind: Literal["move", "switch"]  # later: "item", ...
+    move_index: Optional[int] = None  # required for kind="move"
+    party_slot: Optional[int] = None  # required for kind="switch" (1-based)
     request_id: Optional[str] = None
     created_at: float = 0.0
     # Set by BattleScene._drive_commands() once this specific command finishes executing.

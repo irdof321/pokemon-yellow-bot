@@ -65,6 +65,13 @@ class BattleService(Service):
             self.logger.warning("Current scene does not support enqueue_command (type={})", type(scene))
             return
 
+        if cmd.kind == "switch" and cmd.party_slot not in getattr(scene, "eligible_switch_slots", []):
+            self.logger.warning(
+                "party_slot {} is not a valid switch target right now (fainted, already active, or out of range).",
+                cmd.party_slot,
+            )
+            return
+
         try:
             scene.enqueue_command(cmd)
             self.logger.info("Enqueued battle command: {}", cmd)
@@ -102,31 +109,50 @@ class BattleService(Service):
         """
         Converts parsed payload into a BattleCommand.
 
-        Currently supports only 'move' -> BattleCommand(kind="move", move_index=..., created_at=...).
+        Supports 'move' -> BattleCommand(kind="move", move_index=...) and
+        'pkm' -> BattleCommand(kind="switch", party_slot=...).
         """
         action_name = getattr(battle_action, "name", str(battle_action)).lower()
 
-        if action_name != "move":
-            self.logger.warning("Action '{}' not supported yet (only 'move' is supported).", action_name)
-            return None
+        if action_name == "move":
+            choice = msg.get("choice", None)
+            if choice is None:
+                self.logger.warning("Move command missing 'choice'")
+                return None
 
-        choice = msg.get("choice", None)
-        if choice is None:
-            self.logger.warning("Move command missing 'choice'")
-            return None
+            try:
+                move_index = int(choice)
+            except (TypeError, ValueError):
+                self.logger.warning("Invalid move 'choice': {}", choice)
+                return None
 
-        try:
-            move_index = int(choice)
-        except (TypeError, ValueError):
-            self.logger.warning("Invalid move 'choice': {}", choice)
-            return None
+            if move_index < 1:
+                self.logger.warning("Invalid move_index (<1): {}", move_index)
+                return None
 
-        if move_index < 1:
-            self.logger.warning("Invalid move_index (<1): {}", move_index)
-            return None
+            # Your BattleScene converts 1-based to 0-based internally.
+            return BattleCommand(kind="move", move_index=move_index, created_at=time.time())
 
-        # Your BattleScene converts 1-based to 0-based internally.
-        return BattleCommand(kind="move", move_index=move_index, created_at=time.time())
+        if action_name == "pkm":
+            choice = msg.get("choice", None)
+            if choice is None:
+                self.logger.warning("Switch command missing 'choice'")
+                return None
+
+            try:
+                party_slot = int(choice)
+            except (TypeError, ValueError):
+                self.logger.warning("Invalid switch 'choice': {}", choice)
+                return None
+
+            if party_slot < 1 or party_slot > 6:
+                self.logger.warning("Invalid party_slot (expected 1..6): {}", party_slot)
+                return None
+
+            return BattleCommand(kind="switch", party_slot=party_slot, created_at=time.time())
+
+        self.logger.warning("Action '{}' not supported yet (only 'move', 'pkm' are supported).", action_name)
+        return None
 
     def _get_current_scene(self):
         provider = self.scene_provider
