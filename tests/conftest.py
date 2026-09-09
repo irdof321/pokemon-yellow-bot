@@ -54,17 +54,34 @@ class _SceneDriver:
     test_battle_move_edge_cases.py's 3-turn rotation test: it caused a
     stray extra A press that silently re-selected the wrong move).
 
-    scene.update() is only called every 60 frames, right after that
-    interval's button pop/press -- NOT every frame. Production never calls
-    it faster than SceneManagerService's poll_interval (0.5s); calling it
-    every single frame let _can_enqueue_input() see an empty button queue
-    and enqueue a second button before the first one had even been
-    processed by a single tick_once(), overshooting the cursor. One state
-    check per 60-frame window gives each press a full second (simulated) to
-    actually register in RAM before the next one is considered.
+    scene.update() is called far more often than buttons are popped/pressed
+    (every UPDATE_EVERY frames vs every POP_EVERY frames), and deliberately
+    OFFSET so an update() call never lands on the exact same frame as a
+    pop+press. This mirrors production: EmulatorLoop pops/presses buttons on
+    the main thread every button_cooldown, while SceneManagerService calls
+    scene.update() independently, on its own thread, every poll_interval --
+    genuinely decoupled, never synchronized to the same instant.
+
+    An earlier version of this driver called scene.update() at the SAME
+    frame % 60 == 0 check as the pop/press, every single cycle -- always in
+    lockstep, never decoupled. That let scene.update()'s decision logic run
+    immediately after a button had JUST been physically pressed, before that
+    press had a single tick to register in RAM, so its next decision was
+    based on stale state. This reproduced as a real, confusing bug: selecting
+    move_index=2/3 made the cursor wander into an unrelated menu (menu_top
+    values never seen in the real threaded system) and never converge --
+    while the exact same scenario worked correctly through the real
+    EmulatorLoop/SceneManagerService (see scripts/debug_cursor_oscillation.py),
+    proving it was this driver's timing that was unfaithful, not a real
+    BattleScene bug. Simply calling update() more often, without the offset,
+    does NOT fix it: 60 is itself a multiple of smaller update intervals, so
+    naive "more frequent" checks still land exactly on pop frames every time.
     """
 
     FRAME_DT = 1 / 60
+    POP_EVERY = 60      # matches production's ~1s-scale button cadence
+    UPDATE_EVERY = 6    # matches production's much faster, independent poll cadence
+    UPDATE_OFFSET = 3   # guarantees update frames never coincide with pop frames
 
     def __init__(self):
         self.now = 0.0
@@ -73,10 +90,11 @@ class _SceneDriver:
         for frame in range(1, max_frames + 1):
             session.tick_once()
             self.now += self.FRAME_DT
-            if frame % 60 == 0:
+            if frame % self.POP_EVERY == 0:
                 button = session.pop_button()
                 if button is not None:
                     session.press_button(button)
+            if frame % self.UPDATE_EVERY == self.UPDATE_OFFSET:
                 scene.update(self.now)
                 if condition():
                     return True

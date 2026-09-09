@@ -362,7 +362,7 @@ class BattleScene(Scene):
             self.logger.warning("Invalid move_index (expected 1..4): {}", move_index)
             return True
 
-        target_id = move_index - 1  # RAM menu_id is 0-based, move_index is 1-based
+        target_id = move_index   # RAM menu_id is 0-based, move_index is 1-based
 
         # --------------------------------------------------------------
         # Phase 1: select the move (we interpret menu_id as cursor on moves)
