@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import  Optional, Protocol, Tuple
 
-from game.scenes.battle_scene import BattleScene
+from game.scenes.battle_scene import BattleScene, eligibility_error
 from game.scenes.commands import BattleCommand
 
 
@@ -31,6 +31,15 @@ class SceneController:
         # Check if a scene is available
         if scene is None :
             return ({}, 0.0, False, {"error": "no_active_scene"})
+
+        # reject an ineligible command before it's even enqueued -- same rule
+        # BattleService enforces on the MQTT path, so a direct caller (e.g. an
+        # RL agent) gets the same protection instead of waiting on a
+        # done_event that would never be set.
+        error = eligibility_error(scene, cmd)
+        if error:
+            self._logger.warning(error)
+            return (scene.to_dict(), 0.0, False, {"error": "ineligible_command", "reason": error})
 
         # put the command
         scene.enqueue_command(cmd)

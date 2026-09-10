@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from game.mqtt.client import MQTTClient
 from game.mqtt.topics import BATTLE_MOVE_TOPIC
+from game.scenes.battle_scene import eligibility_error
 from game.scenes.common import BATTLE_ACTION, str_to_battle_action
 from game.scenes.commands import BattleCommand
 from game.services.service import Service
@@ -65,11 +66,9 @@ class BattleService(Service):
             self.logger.warning("Current scene does not support enqueue_command (type={})", type(scene))
             return
 
-        if cmd.kind == "switch" and cmd.party_slot not in getattr(scene, "eligible_switch_slots", []):
-            self.logger.warning(
-                "party_slot {} is not a valid switch target right now (fainted, already active, or out of range).",
-                cmd.party_slot,
-            )
+        error = eligibility_error(scene, cmd)
+        if error:
+            self.logger.warning(error)
             return
 
         try:

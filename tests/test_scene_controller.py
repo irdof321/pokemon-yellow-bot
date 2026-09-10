@@ -7,7 +7,13 @@ from game.scenes.scene_controller import SceneController
 
 class FakeBattleScene:
     """Minimal stand-in for BattleScene: mimics enqueue_command()/to_dict()
-    without needing PyBoy or a ROM."""
+    without needing PyBoy or a ROM. Reports everything as eligible -- these
+    tests are about step()'s blocking/timeout behavior, not eligibility
+    rejection (that's covered by filter_eligible_move_slots /
+    filter_eligible_switch_slots' own tests)."""
+
+    eligible_move_slots = [1, 2, 3, 4]
+    eligible_switch_slots = [1, 2, 3, 4, 5, 6]
 
     def __init__(self):
         self._commands = []
@@ -78,6 +84,19 @@ def test_step_reports_timeout_when_command_never_completes():
     _, _, _, info = controller.step(cmd)
 
     assert info["timeout"] is True
+
+
+def test_step_rejects_ineligible_move_without_enqueueing():
+    scene = FakeBattleScene()
+    scene.eligible_move_slots = [1, 2, 3]  # no slot 4, like a Pokemon with only 3 moves
+    controller = SceneController(FakeSceneProvider(scene), NullLogger(), default_timeout=0.2)
+    cmd = BattleCommand(kind="move", move_index=4)
+
+    obs, reward, done, info = controller.step(cmd)
+
+    assert info["error"] == "ineligible_command"
+    assert info.get("timeout") is not True
+    assert scene._commands == [], "an ineligible command must never be enqueued"
 
 
 def test_step_returns_error_info_when_no_active_scene():

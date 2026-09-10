@@ -50,9 +50,9 @@ The focus is **architecture and engineering clarity**, not gameplay performance.
 - Battle-only loop:
   - Move selection
   - Move execution
+  - Pokémon switching (voluntary, from the FIGHT/PKMN menu, and forced after a faint)
 
 ### Not supported (for now)
-- Pokémon switching
 - Item usage (in or out of battle)
 - Running away
 - Overworld exploration / navigation
@@ -181,6 +181,36 @@ Pokémon Yellow has a single structural difference:
 - All WRAM addresses **after `$CF1A` are shifted by -1** in Yellow
 
 Unless explicitly stated, **assume Pokémon Red addressing**.
+
+---
+
+## Testing
+
+Tests are built around real PyBoy save states (`tests/fixtures/*.state` + matching `*.json`
+ground truth), not mocks — see `tests/fixtures/README.md` for the fixture-capture workflow.
+
+```bash
+pytest tests/
+```
+
+By default tests run headless, as fast as the CPU allows. Pass `--visual` to instead run
+with a real SDL2 window and live logs of what's being driven (menu state, phase, etc.) --
+useful to actually watch a test instead of trusting a pass/fail:
+
+```bash
+pytest tests/test_battle_switch_execution.py -v -s --visual
+```
+
+(`-s` is required, otherwise pytest captures the logs). Add `--visual-speed=N` to run
+faster than real-time while still watching (`0` = uncapped, too fast to follow; `2`-`5` is
+a good middle ground):
+
+```bash
+pytest tests/ -v -s --visual --visual-speed=3
+```
+
+`scripts/` also has a few standalone debugging scripts (real SDL2 window, real threaded
+`EmulatorLoop`) for manually stepping through specific bugs outside of pytest.
 
 ---
 
