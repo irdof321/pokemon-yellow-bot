@@ -1,0 +1,102 @@
+{
+  "description": "Wild battle vs Rattata; player has a full party of 6 (Charmander active, Caterpie, Pikachu, 3x Rattata), party-select screen already open (\"Choose a POKeMON.\") -- captured specifically to test the switch feature across multiple slots, not just a single alive/dead pair.",
+  "game_version": "red",
+  "captured_at": "2026-09-09",
+  "battle_type": "wild",
+  "notes": [
+    "battle_type confirmed via real RAM read (BattleContext.battle_type == WILD) at capture time, not just inferred from the screenshot (no trainer sprite shown, plain 'RATTATA :L3').",
+    "enemy/party Rattata types (Normal/Normal) are not shown on screen -- general game knowledge, same convention already used for Diglett/Sandshrew in battle_must_go_on_fight.json.",
+    "enemy.hp is not shown as an exact number on screen (health bar only, appeared full) -- the [15, 15] value here is confirmed via a real RAM read (BattleScene.to_dict()) at capture time, not guessed.",
+    "Charmander/Caterpie/Pikachu types (Fire/Bug/Electric) reused from battle_must_go_on_fight.json for the same species, not re-derived here -- the party-select screen doesn't show types.",
+    "Party slot 6 displays a hard-to-read name on screen that looked like a custom nickname -- confirmed via real RAM read that its SPECIES is Rattata (L3, 15/15 HP); PartyPokemon.name returns the species' English name, not any in-game nickname, so this is expected, not a discrepancy.",
+    "moves not captured for any Pokemon here -- neither screenshot shows a move list (the FIGHT menu was never opened, only PKMN).",
+    "menu_top=(9,14) menu_id=0 (FIGHT, ready_main_menu) at the moment this state was saved, confirmed via real RAM read -- the party-select screen itself is reached by driving from here, not baked into the save."
+  ],
+  "expected": {
+    "enemy": {
+      "dex": 19,
+      "name": "Rattata",
+      "level": 3,
+      "hp": [15, 15],
+      "types": ["Normal", "Normal"],
+      "status": ["Healthy"],
+      "moves": []
+    },
+    "enemy_party": [
+      {
+        "dex": 19,
+        "name": "Rattata",
+        "level": 3,
+        "hp": [15, 15],
+        "types": ["Normal", "Normal"],
+        "status": ["Healthy"],
+        "moves": []
+      }
+    ],
+    "on_battle": {
+      "dex": 4,
+      "name": "Charmander",
+      "level": 14,
+      "hp": [29, 38],
+      "types": ["Fire", "Fire"],
+      "status": ["Healthy"],
+      "moves": []
+    },
+    "party": [
+      {
+        "dex": 4,
+        "name": "Charmander",
+        "level": 14,
+        "hp": [29, 38],
+        "types": ["Fire", "Fire"],
+        "status": ["Healthy"],
+        "moves": []
+      },
+      {
+        "dex": 10,
+        "name": "Caterpie",
+        "level": 4,
+        "hp": [17, 17],
+        "types": ["Bug", "Bug"],
+        "status": ["Healthy"],
+        "moves": []
+      },
+      {
+        "dex": 25,
+        "name": "Pikachu",
+        "level": 10,
+        "hp": [29, 29],
+        "types": ["Electric", "Electric"],
+        "status": ["Healthy"],
+        "moves": []
+      },
+      {
+        "dex": 19,
+        "name": "Rattata",
+        "level": 3,
+        "hp": [14, 14],
+        "types": ["Normal", "Normal"],
+        "status": ["Healthy"],
+        "moves": []
+      },
+      {
+        "dex": 19,
+        "name": "Rattata",
+        "level": 5,
+        "hp": [18, 18],
+        "types": ["Normal", "Normal"],
+        "status": ["Healthy"],
+        "moves": []
+      },
+      {
+        "dex": 19,
+        "name": "Rattata",
+        "level": 3,
+        "hp": [15, 15],
+        "types": ["Normal", "Normal"],
+        "status": ["Healthy"],
+        "moves": []
+      }
+    ]
+  }
+}
