@@ -25,5 +25,8 @@ class Scene:
     def is_ready(self) -> bool:
         raise NotImplementedError()
 
+    def is_scene_complete(self) -> bool:
+        raise NotImplementedError()
+
 
 __all__ = ["Scene"]

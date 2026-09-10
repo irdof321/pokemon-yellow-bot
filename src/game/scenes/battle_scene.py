@@ -316,6 +316,25 @@ class BattleScene(Scene):
         now (empty slots -- fewer than 4 known moves -- are excluded)."""
         return filter_eligible_move_slots(self.player_active.moves)
 
+    @property
+    def enemy_remaining_count(self) -> int:
+        """How many enemy Pokemon are still alive (current_hp > 0). For a wild
+        battle enemy_party is just [enemy], so this reads 1 until it faints,
+        then 0. For a trainer battle it reflects their whole roster."""
+        return sum(1 for p in self.enemy_party if p.current_hp > 0)
+
+    def is_scene_complete(self) -> bool:
+        """True once the battle itself has ended (BattleTypeID back to 0),
+        as opposed to is_ready() which is about being ready for the NEXT
+        decision mid-battle. Same RAM signal SceneManagerService already uses
+        to know when to tear down this scene (see
+        SceneManagerService._end_battle_if_needed) -- read directly here
+        rather than depending on that service, since a caller (SceneController)
+        may still be holding this exact scene instance after the service has
+        already moved on."""
+        raw = self.session.read_memory(MainPokemonData.BattleTypeID)
+        return not raw or raw[0] == 0
+
     # ------------------------------------------------------------------
     # Input gating: enqueue at most 1 button when allowed
     # ------------------------------------------------------------------
@@ -608,8 +627,15 @@ class BattleScene(Scene):
         # Phase 2: post-move dialogues / message boxes (ambiguous UI)
         # --------------------------------------------------------------
         if self._phase == self._PHASE_POST_DIALOG:
-            # We consider the move command completed only when we return to ready main menu.
-            if self.is_ready_main_menu:
+            # We consider the move command completed once we return to ready
+            # main menu (battle continues) OR the battle itself just ended
+            # (this move fainted the last enemy Pokemon, or the enemy's
+            # counter-move finished us off) -- is_ready_main_menu alone would
+            # never become true in that case, since the game goes straight to
+            # the victory/blackout sequence and never re-shows FIGHT/ITEM/
+            # PKMN/RUN, leaving done_event stuck until SceneController's own
+            # timeout.
+            if self.is_ready_main_menu or self.is_scene_complete():
                 return True
 
             # While text is confidently still printing, skip its per-letter
@@ -702,7 +728,7 @@ class BattleScene(Scene):
         # Phase 3: SWITCH/STATS/CANCEL sub-menu -- confirm SWITCH
         # --------------------------------------------------------------
         if self._phase == self._PHASE_SWITCH_SUBMENU:
-            if self.is_ready_main_menu:
+            if self.is_ready_main_menu or self.is_scene_complete():
                 # Already back at the ready main menu without us ever having
                 # explicitly seen/confirmed the SWITCH/STATS/CANCEL popup --
                 # this happens when the party-select confirm (A) doesn't get
@@ -736,7 +762,7 @@ class BattleScene(Scene):
         # tests/fixtures/battle_forced_switch_screen.state exists)
         # --------------------------------------------------------------
         if self._phase == self._PHASE_SWITCH_POST_DIALOG:
-            if self.is_ready_main_menu:
+            if self.is_ready_main_menu or self.is_scene_complete():
                 return True
 
             self._try_speed_up_text_print()
@@ -780,6 +806,7 @@ class BattleScene(Scene):
             "forced_switch_pending": self.is_forced_switch_pending,
             "eligible_switch_slots": self.eligible_switch_slots,
             "eligible_move_slots": self.eligible_move_slots,
+            "enemy_remaining_count": self.enemy_remaining_count,
         }
         
 
