@@ -86,15 +86,11 @@ class EmulatorLoop:
         finally:
             self.session.logger.info("Emulator loop finished")
 
-            # Stop the services thread
+            # Stop the services thread and wait for it to actually stop
+            # ticking before calling quit() on services, otherwise quit()
+            # can run concurrently with a service's tick() (e.g. tearing
+            # down state tick() is mid-way through reading).
             self._stop_services.set()
-            for service in self.services:
-                try:
-                    service.quit()
-                except Exception:
-                    self.session.logger.exception(
-                        "Error in service.quit for %r", service
-                    )
             if self._services_thread is not None:
                 time_before_join = self.clock()
                 self._services_thread.join(timeout=10.0)
@@ -106,7 +102,15 @@ class EmulatorLoop:
                 else:
                     self.session.logger.info(
                         f"Services thread terminated within {elapsed:.2f} seconds"
-                        
+
+                    )
+
+            for service in self.services:
+                try:
+                    service.quit()
+                except Exception:
+                    self.session.logger.exception(
+                        "Error in service.quit for %r", service
                     )
         
 
