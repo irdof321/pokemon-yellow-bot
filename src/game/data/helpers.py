@@ -55,10 +55,20 @@ def write_u8(md: MemoryData, value: int) -> None:
 
 
 def write_u16(md: MemoryData, value: int) -> None:
-    lo = value & 0xFF
+    """Mirrors read_u16/read_u16_mem's byte order exactly: high byte at
+    start_address, low byte at start_address + 1. Found and fixed
+    2026-09-10 -- this function wrote the opposite order (low byte first),
+    silently never caught before because nothing had exercised it: writing
+    HP=17 (0x0011) produced memory bytes [0x11, 0x00], which read_u16
+    (hi,lo = raw[0],raw[1]; return lo | (hi<<8)) then decoded back as
+    0x1100 = 4352. Every *read* path in this project (_u16/read_u16_mem)
+    already treats the first byte as high/second as low, proven correct by
+    every HP/stat value seen all session -- this write side just didn't
+    match it."""
     hi = (value >> 8) & 0xFF
-    MemoryData.game.memory[md.start_address] = lo
-    MemoryData.game.memory[md.start_address + 1] = hi
+    lo = value & 0xFF
+    MemoryData.game.memory[md.start_address] = hi
+    MemoryData.game.memory[md.start_address + 1] = lo
 
 
 __all__ = [

@@ -19,6 +19,9 @@ class EmulatorLoop:
         button_cooldown: float = 1.0,
         service_tick_interval: float = 0.1,  # <-- nouveau: intervalle des services
         clock=monotonic,
+        capture_hotkey: bool = False,
+        capture_key_scancode: int = 62,  # sdl2.SDL_SCANCODE_F5 -- unused by PyBoy's own key map
+        capture_dir: str = "tests/fixtures",
     ):
         self.session = session
         self.services = list(services)
@@ -26,6 +29,16 @@ class EmulatorLoop:
         self.service_tick_interval = service_tick_interval
         self.clock = clock
         self._next_button_time = clock()
+
+        # Manual-play helper (app.py only, not training/tests): press F5 to
+        # save the current state to its own uniquely-named fixture file --
+        # for building up a library of battle-start captures while playing,
+        # without ever overwriting an earlier one. Off by default: only
+        # meaningful with a real SDL2 window and a human at the keyboard.
+        self.capture_hotkey = capture_hotkey
+        self.capture_key_scancode = capture_key_scancode
+        self.capture_dir = capture_dir
+        self._capture_key_was_down = False
 
         # Gestion du thread des services
         self._services_thread: threading.Thread | None = None
@@ -73,9 +86,18 @@ class EmulatorLoop:
             while True:
                 frame += 1
 
+                # Advance the clock if it's frame-driven (FrameClock, used
+                # for training) rather than real wall-clock time (the
+                # default) -- see FrameClock's docstring. A no-op for the
+                # default monotonic clock, which has no tick().
+                if hasattr(self.clock, "tick"):
+                    self.clock.tick()
+
                 now = self.clock()
                 if frame % 60 == 0:
                     self._maybe_pop_button(now)
+                if self.capture_hotkey:
+                    self._maybe_capture_state()
                 running = self.session.tick_once()
 
                 if not running:
@@ -129,6 +151,30 @@ class EmulatorLoop:
         self._next_button_time = seconds_from_now(
             self.button_cooldown, clock=lambda: now
         )
+
+    def _maybe_capture_state(self) -> None:
+        """Edge-detects capture_key_scancode (F5 by default) via raw SDL2
+        keyboard state -- deliberately NOT going through PyBoy's own
+        WindowEvent/button pipeline (that's a fixed, closed set of events,
+        see WindowEvent in pyboy.utils; there's no slot in it for "save to
+        a new uniquely-named file", only its built-in STATE_SAVE, which
+        always overwrites the same <rom>.state). Polling SDL_GetKeyboardState
+        ourselves works alongside PyBoy's own event handling without
+        conflicting with it. Only meaningful with a real SDL2 window (see
+        capture_hotkey on __init__); silently does nothing if SDL2 isn't
+        available or has no video subsystem (e.g. headless training runs
+        that mistakenly left capture_hotkey on)."""
+        try:
+            import sdl2
+
+            keys = sdl2.SDL_GetKeyboardState(None)
+            is_down = bool(keys[self.capture_key_scancode])
+        except Exception:
+            return
+
+        if is_down and not self._capture_key_was_down:
+            self.session.capture_battle_state(self.capture_dir)
+        self._capture_key_was_down = is_down
 
 
 __all__ = ["EmulatorLoop", "Service"]

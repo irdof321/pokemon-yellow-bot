@@ -1,18 +1,30 @@
 # pokemon-yellow-bot
 
-An **experimental agent framework** built on top of the **PyBoy** emulator, currently targeting **Pokémon Red (Generation I)** as a controlled sandbox.
+A **Pokémon Red (Generation I) battle-automation framework** built on top of
+the **PyBoy** emulator: real RAM reading, explicit game-state
+reconstruction, and a command-queue-driven battle loop (move selection,
+move execution, switching).
 
-This repository is **not** about building a perfect or competitive Pokémon bot.
-It is a **software engineering and agent-architecture project**, using Pokémon as a deterministic legacy environment to experiment with **state reconstruction, decision decoupling, and LLM-driven planning**.
+This repository owns the battle logic itself, not any particular decision
+strategy. Two different decision layers have been built against it, in
+[pokemon-client](https://github.com/irdof321/pokemon-client):
 
-> ⚠️ Classical rule-based or reinforcement learning approaches can play Pokémon **far more efficiently**.  
-> This project deliberately explores a different design space.
+- **Reinforcement learning (current, active work)**: a MaskablePPO agent
+  trains against `game.training.battle_randomizer` here, which mutates a
+  captured fixture into a fresh, randomized battle live in RAM on every
+  `reset()`, no pre-generated dataset. See that repo's README for
+  `rl/train.py` and `rl/watch_agent.py`.
+- **LLM-driven decision-making (original direction, now reference-only)**:
+  the project's starting point was exploring state reconstruction and
+  decision/execution decoupling with an LLM as the high-level planner, via
+  `read.py` (an LLM/MQTT bridge). Kept for reference, not actively
+  developed.
 
 ---
 
 ## Project intent
 
-This project is designed to explore:
+This project explores:
 
 - Interaction with a **legacy deterministic system** via direct memory inspection (WRAM / HRAM)
 - Explicit **game-state reconstruction** from emulator RAM
@@ -21,8 +33,13 @@ This project is designed to explore:
   - State modeling
   - Decision logic
   - Action execution
-- Use of a **Large Language Model (LLM)** as a **high-level decision engine / planner**
-- Informal evaluation, during development, of where LLM-based decision-making helps or hurts in a deterministic system
+- Randomized battle generation as a cheap, storage-free way to produce
+  effectively unlimited training scenarios from a handful of captured
+  fixtures, instead of a large pre-generated dataset
+- Originally, use of a **Large Language Model (LLM)** as a high-level
+  decision engine/planner, and informally evaluating where that helps or
+  hurts in a deterministic system, still available via `read.py` but no
+  longer the active direction
 
 Pokémon is used strictly as a **technical testbed**, not as an end goal.
 
@@ -30,12 +47,20 @@ Pokémon is used strictly as a **technical testbed**, not as an end goal.
 
 ## What this project is NOT
 
-- ❌ Not a competitive Pokémon bot
-- ❌ Not a reinforcement learning benchmark
-- ❌ Not a "perfect play" agent
-- ❌ Not a full game automation system
+- ❌ Not a full game automation system: battles only, no items, no fleeing,
+  no overworld
 
-The focus is **architecture and engineering clarity**, not gameplay performance.
+This framework's own job is **correct, RAM-verified battle automation**,
+not gameplay performance: it just needs to execute whatever a decision
+layer decides, reliably. That's still the whole story for the LLM track
+(`read.py`), which was never about winning, just about testing where
+LLM-based decisions hold up in a deterministic system.
+
+The RL track is different: the agent trained on top of this framework
+(see pokemon-client's `rl/` package) is explicitly optimizing to win
+battles as reliably and quickly as possible, within the battle-only scope
+this framework supports. "Not gameplay performance for its own sake" is a
+statement about this repo, not about that agent's goal.
 
 ---
 
@@ -51,6 +76,13 @@ The focus is **architecture and engineering clarity**, not gameplay performance.
   - Move selection
   - Move execution
   - Pokémon switching (voluntary, from the FIGHT/PKMN menu, and forced after a faint)
+- **F5 hotkey** (manual play, real SDL2 window only): captures the current
+  state to its own uniquely-named file under `tests/fixtures/battles/`
+  (or wherever `capture_dir` points). Useful for building up a library of
+  battle-start fixtures, or for reporting a stuck/incorrect turn with a
+  concrete state to replay instead of just a description.
+- `game.training.battle_randomizer`: species, levels (matched band per
+  side), movesets, and party sizes, mutated live in RAM (see intro above).
 
 ### Not supported (for now)
 - Item usage (in or out of battle)
@@ -131,6 +163,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Using this repo from another project (e.g. pokemon-client)
+This repo is packaged (`pyproject.toml`, src-layout) so it can be installed
+editable into another project's venv instead of copy-pasting code:
+```bash
+pip install -e /path/to/pokemon-yellow-bot
+```
+`pyboy` is pinned **exactly** (`==2.6.0`) in `pyproject.toml`, since
+`.state` files are version-sensitive binary data: a mismatch fails with a
+cryptic `PyBoyAssertException`, not a clear version message.
+
 ---
 
 ## How to run
@@ -147,16 +189,16 @@ autosave = AutosaveService(game, logger, 120)
 python app.py
 ```
 
-### 3) Start the Pokemon-Client (POC)
-The client consumes the API and implements decision logic
-(e.g. rules, heuristics, or LLM-based reasoning).
-
-Client repo:
+### 3) Decision logic: two separate paths in pokemon-client
 https://github.com/irdof321/pokemon-client
 
-```bash
-python path/to/read.py
-```
+- **RL agent** (current, active work): trains a MaskablePPO agent against
+  randomized battles instead of live emulator+API wiring. Doesn't use
+  `app.py`/steps 1-2 above at all; see that repo's README for
+  `rl/train.py` and `rl/watch_agent.py`.
+- **`read.py`** (older LLM/MQTT bridge, kept for reference): consumes
+  this repo's live API and implements decision logic via an LLM. Run
+  `python path/to/read.py` after steps 1-2.
 
 ### 4) Enter a battle
 Once a battle starts, the framework handles move selection and execution.
@@ -194,7 +236,7 @@ pytest tests/
 ```
 
 By default tests run headless, as fast as the CPU allows. Pass `--visual` to instead run
-with a real SDL2 window and live logs of what's being driven (menu state, phase, etc.) --
+with a real SDL2 window and live logs of what's being driven (menu state, phase, etc.),
 useful to actually watch a test instead of trusting a pass/fail:
 
 ```bash
@@ -227,5 +269,9 @@ pytest tests/ -v -s --visual --visual-speed=3
 ## Status
 
 - Tag: `v0.1.0`
-- Focus: battle-only agent framework
-- Purpose: architecture & decision-system experimentation
+- Focus: battle-only automation framework, packaged (`pyproject.toml`) for
+  reuse from another project's venv
+- Active application: RL agent training (MaskablePPO), via pokemon-client's
+  `rl/` package, using this repo's live in-RAM battle randomization
+- Reference/inactive: LLM-driven decision-making, via pokemon-client's
+  `read.py`

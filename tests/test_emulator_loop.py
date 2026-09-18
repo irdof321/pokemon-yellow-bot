@@ -1,10 +1,12 @@
-"""Unit tests for EmulatorLoop's shutdown ordering (no real PyBoy needed)."""
+"""Unit tests for EmulatorLoop's shutdown ordering and clock handling (no
+real PyBoy needed)."""
 import threading
 import time
 
 from loguru import logger
 
 from game.core.loop import EmulatorLoop
+from game.utils.time_utils import FrameClock
 
 
 class _FakeSession:
@@ -74,4 +76,39 @@ def test_quit_waits_for_services_thread_to_stop_ticking():
     assert service.quit_called.is_set()
     assert not service.quit_seen_during_tick, (
         "quit() ran while tick() was still executing -- shutdown ordering regression"
+    )
+
+
+def test_frame_clock_ticks_in_simulated_seconds_not_real_ones():
+    """Sanity check on FrameClock itself, independent of EmulatorLoop: N
+    ticks at fps=60 must read back as N/60 simulated seconds, regardless of
+    how much real time actually passed while ticking it."""
+    clock = FrameClock(fps=60.0)
+    assert clock() == 0.0
+
+    for _ in range(120):
+        clock.tick()
+
+    assert clock() == 2.0  # 120 frames / 60 fps = 2 simulated seconds
+
+
+def test_frame_clock_lets_run_finish_fast_despite_real_time_cooldowns():
+    """With a FrameClock (training mode), EmulatorLoop.run() must not be
+    throttled by real wall-clock sleeps: button_cooldown is expressed in
+    simulated seconds (frame_count / fps), which race ahead of real time as
+    fast as tick_once() can be called, instead of being paced by
+    time.monotonic() (the default clock) like a human-watched run would be.
+    600 frames = 10 simulated seconds at 60fps -- with the real clock and
+    button_cooldown=1.0, that alone would take multiple real seconds; with
+    FrameClock it must take a small fraction of a second."""
+    session = _FakeSession(run_frames=600)
+    loop = EmulatorLoop(session, services=[], button_cooldown=1.0, clock=FrameClock())
+
+    start = time.monotonic()
+    loop.run()
+    elapsed_real = time.monotonic() - start
+
+    assert elapsed_real < 0.5, (
+        f"run() took {elapsed_real:.2f}s of real time -- FrameClock isn't "
+        "decoupling pacing from the wall clock"
     )

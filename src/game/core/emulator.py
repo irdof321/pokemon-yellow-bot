@@ -1,6 +1,8 @@
 """PyBoy wrapper used by the modernised game loop."""
 from __future__ import annotations
 
+import datetime
+import os
 from typing import Iterable, Optional
 
 from loguru import logger as _loguru_logger
@@ -88,6 +90,21 @@ class EmulatorSession(PyBoy):
             self.save_state(fh)
             elapsed = monotonic() - started_at
         self.logger.debug("write_live_state (locked section) took {:.4f}s", elapsed)
+
+    def capture_battle_state(self, directory: str = "tests/fixtures") -> str:
+        """Saves the current state to its own uniquely-named file (never
+        overwrites an earlier capture) -- for manually building up a
+        library of battle-start fixtures while playing, one hotkey press
+        per capture. Timestamped (down to the microsecond) rather than
+        numbered: no need to scan the directory for "the current highest N"
+        first, and two captures can never collide."""
+        os.makedirs(directory, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        path = os.path.join(directory, f"battle_{timestamp}.state")
+        with open(path, "wb") as fh:
+            self.write_live_state(fh)
+        self.logger.info("Captured battle state to {}", path)
+        return path
 
     # ------------------------------------------------------------------
     # Memory helpers

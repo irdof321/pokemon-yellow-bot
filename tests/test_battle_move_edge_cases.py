@@ -17,6 +17,10 @@ def _pp(scene, slot_index: int):
 @dataclass
 class FakeMove:
     id: int
+    remaining_pp: int = 10  # nonzero default so existing empty-slot tests don't need to care about PP
+
+    def get_remaining_pp(self) -> int:
+        return self.remaining_pp
 
 
 def test_filter_eligible_move_slots_excludes_empty_ids():
@@ -29,6 +33,17 @@ def test_filter_eligible_move_slots_all_empty():
     assert filter_eligible_move_slots(moves) == []
 
 
+def test_filter_eligible_move_slots_excludes_zero_pp():
+    """Regression test for a real bug hit via the RL agent (2026-09-11): a
+    move slot with a real id but 0 PP left must not be offered -- real Gen1
+    rejects picking it ("There's no PP left for this move!") and the old
+    filter (id != 0 only) let the agent pick it forever, since our
+    _execute_move had no way to detect the rejection and kept re-confirming
+    the same slot."""
+    moves = [FakeMove(id=33, remaining_pp=0), FakeMove(id=45), FakeMove(id=52), FakeMove(id=0)]
+    assert filter_eligible_move_slots(moves) == [2, 3]
+
+
 def test_eligible_move_slots_on_real_fixture(load_fixture):
     """Charmander here has Scratch/Growl/Ember and an empty 4th slot (see
     module docstring) -- confirms eligible_move_slots against real RAM, not
@@ -36,6 +51,24 @@ def test_eligible_move_slots_on_real_fixture(load_fixture):
     session = load_fixture(STATE_NAME)
     scene = create_battle_scene(session, 0)
     assert scene.eligible_move_slots == [1, 2, 3]
+
+
+def test_eligible_move_slots_is_empty_when_active_pokemon_has_fainted(load_fixture):
+    """Regression test for a real gap found while designing the RL action
+    mask (2026-09-10): eligible_move_slots used to only check whether the
+    active Pokemon knows a move, never whether a move can actually be
+    SELECTED right now. ratata_just_died.state is captured the instant HP
+    hits 0 (still mid "fainted!" message, is_forced_switch_pending is still
+    False -- see its own docstring for why that lags on purpose), and the
+    old logic wrongly reported real move slots as eligible here. An agent
+    (or anything else) picking "move" in this exact window would enqueue a
+    command with no FIGHT menu reachable to execute it -- see
+    _ensure_ready_main_menu's current_hp==0 branch, the same ground-truth
+    check this property now uses directly."""
+    session = load_fixture("ratata_just_died.state")
+    scene = create_battle_scene(session, 0)
+    assert scene.player_active.current_hp == 0, "fixture assumption changed"
+    assert scene.eligible_move_slots == []
 
 
 def test_move_4_does_not_complete_no_such_slot(load_fixture, drive_scene):

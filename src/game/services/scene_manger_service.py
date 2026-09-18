@@ -27,7 +27,16 @@ class SceneManagerService(Service):
         self.logger = logger
         self.poll_interval = poll_interval
 
-        self._next_poll_at = seconds_from_now(self.poll_interval)
+        # 0.0, not seconds_from_now(poll_interval): the latter defaults to
+        # real time.monotonic(), which is the WRONG clock whenever
+        # EmulatorLoop is using a substitute (e.g. FrameClock, for training)
+        # -- tick() below compares this against `now` values coming from
+        # that same substitute clock, and a real-time deadline can never be
+        # reached by a small frame-counted one (or vice versa), so polling
+        # would simply never fire. 0.0 is always already-expired on any
+        # clock's scale, so the first tick() always polls immediately,
+        # regardless of which clock EmulatorLoop was constructed with.
+        self._next_poll_at = 0.0
         self._scene: Optional[BattleScene] = None
         self._last_published_turn: int = -1
 
@@ -35,7 +44,7 @@ class SceneManagerService(Service):
         self.logger.debug("SceneManagerService starting")
         payload = to_json({"msg": "hello from PKM", "timestamp": time.time()})
         self.mqtt.publish(START_TOPIC, payload, retain=False)
-        self._next_poll_at = seconds_from_now(self.poll_interval)
+        self._next_poll_at = 0.0
 
     def tick(self, now: float) -> None:
         if not has_expired(self._next_poll_at, clock=lambda: now):

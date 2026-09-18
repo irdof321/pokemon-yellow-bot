@@ -22,18 +22,34 @@ class FakeBattleScene:
     without needing PyBoy or a ROM. Reports everything as eligible -- these
     tests are about step()'s blocking/timeout behavior, not eligibility
     rejection (that's covered by filter_eligible_move_slots /
-    filter_eligible_switch_slots' own tests). player_party/is_battle_over
-    default to "full HP, battle still going" so existing tests (about
-    blocking/timeout, not reward math) don't need to care about them."""
+    filter_eligible_switch_slots' own tests). player_party/enemy_party/
+    is_battle_over/can_still_fight default to "full HP both sides, battle
+    still going" so existing tests (about blocking/timeout, not reward math)
+    don't need to care about them -- a fixed, unmutated enemy_party means
+    the new DAMAGE_DEALT_WEIGHT/KO_BONUS terms contribute exactly 0,
+    leaving their expected reward formulas unchanged.
+
+    can_still_fight mimics BattleScene's own cached property of the same
+    name -- compute_reward reads it directly rather than re-deriving "is
+    anyone alive" from player_party/player_active, since the real property
+    is a cache for a good reason (see its docstring): is_scene_complete()
+    only becomes true once already back in the overworld, where a live read
+    of battle RAM isn't guaranteed to mean anything anymore."""
 
     eligible_move_slots = [1, 2, 3, 4]
     eligible_switch_slots = [1, 2, 3, 4, 5, 6]
 
-    def __init__(self, player_party=None, is_battle_over: bool = False):
+    def __init__(self, player_party=None, enemy_party=None, is_battle_over: bool = False, can_still_fight: bool = True):
         self._commands = []
         self._lock = threading.Lock()
         self.player_party = player_party if player_party is not None else [FakePokemon(35, 35)]
+        self.enemy_party = enemy_party if enemy_party is not None else [FakePokemon(30, 30)]
+        self.can_still_fight = can_still_fight
         self._is_battle_over = is_battle_over
+
+    @property
+    def enemy_remaining_count(self) -> int:
+        return sum(1 for p in self.enemy_party if p.current_hp > 0)
 
     def enqueue_command(self, cmd):
         with self._lock:
@@ -181,8 +197,46 @@ def test_step_applies_per_turn_and_hp_loss_penalty_when_battle_continues():
     assert "won" not in results["info"]
 
 
+def test_step_rewards_damage_dealt_to_the_enemy_team():
+    enemy = FakePokemon(30, 30)
+    scene = FakeBattleScene(enemy_party=[enemy], is_battle_over=False)
+    controller = SceneController(FakeSceneProvider(scene), NullLogger(), default_timeout=2.0)
+    cmd = BattleCommand(kind="move", move_index=1)
+
+    # 12 of 30 max HP dealt this turn (40% of the enemy team's max HP).
+    results = _run_step_and_drive(
+        controller, cmd, scene, mutate_before_drive=lambda: setattr(enemy, "current_hp", 18)
+    )
+
+    expected = SceneController.PER_TURN_PENALTY + SceneController.DAMAGE_DEALT_WEIGHT * (12 / 30 * 100)
+    assert results["reward"] == pytest.approx(expected)
+    assert results["done"] is False
+
+
+def test_step_adds_ko_bonus_when_an_enemy_pokemon_faints():
+    fainted = FakePokemon(30, 30)
+    survivor = FakePokemon(30, 30)
+    scene = FakeBattleScene(enemy_party=[fainted, survivor], is_battle_over=False)
+    controller = SceneController(FakeSceneProvider(scene), NullLogger(), default_timeout=2.0)
+    cmd = BattleCommand(kind="move", move_index=1)
+
+    # Kills one of the two enemy Pokemon outright -- 50% of the enemy
+    # team's max HP dealt this turn, plus the flat per-KO bonus.
+    results = _run_step_and_drive(
+        controller, cmd, scene, mutate_before_drive=lambda: setattr(fainted, "current_hp", 0)
+    )
+
+    expected = (
+        SceneController.PER_TURN_PENALTY
+        + SceneController.DAMAGE_DEALT_WEIGHT * 50.0
+        + SceneController.KO_BONUS * 1
+    )
+    assert results["reward"] == pytest.approx(expected)
+    assert results["done"] is False
+
+
 def test_step_adds_win_bonus_when_battle_ends_with_a_pokemon_alive():
-    scene = FakeBattleScene(player_party=[FakePokemon(20, 35)], is_battle_over=True)
+    scene = FakeBattleScene(player_party=[FakePokemon(20, 35)], is_battle_over=True, can_still_fight=True)
     controller = SceneController(FakeSceneProvider(scene), NullLogger(), default_timeout=2.0)
     cmd = BattleCommand(kind="move", move_index=1)
 
@@ -195,7 +249,7 @@ def test_step_adds_win_bonus_when_battle_ends_with_a_pokemon_alive():
 
 
 def test_step_adds_loss_bonus_when_battle_ends_with_no_pokemon_alive():
-    scene = FakeBattleScene(player_party=[FakePokemon(0, 35)], is_battle_over=True)
+    scene = FakeBattleScene(player_party=[FakePokemon(0, 35)], is_battle_over=True, can_still_fight=False)
     controller = SceneController(FakeSceneProvider(scene), NullLogger(), default_timeout=2.0)
     cmd = BattleCommand(kind="move", move_index=1)
 
@@ -203,6 +257,31 @@ def test_step_adds_loss_bonus_when_battle_ends_with_no_pokemon_alive():
 
     expected = SceneController.PER_TURN_PENALTY + SceneController.LOSS_BONUS
     assert results["reward"] == pytest.approx(expected)
+    assert results["done"] is True
+    assert results["info"]["won"] is False
+
+
+def test_step_reports_loss_from_can_still_fight_even_if_party_party_hp_disagrees():
+    """Regression test for a real bug hit via the RL agent (2026-09-11, hit
+    TWICE with two different live-read fixes before this one): once
+    is_scene_complete() is true, the game is already back in the overworld
+    and a live read of battle RAM (player_active OR player_party) isn't
+    guaranteed to still mean anything -- an actual full team wipe was twice
+    misreported as a win this way. compute_reward must trust
+    scene.can_still_fight (BattleScene's own cache, refreshed every
+    update() while still definitely in battle) instead of re-deriving
+    anything from player_party at reward time -- proven here by giving it
+    HP data that would say "alive" if compute_reward still looked at it."""
+    scene = FakeBattleScene(
+        player_party=[FakePokemon(35, 35)],  # would look very much alive if read directly
+        is_battle_over=True,
+        can_still_fight=False,  # but the cache says otherwise -- this must win
+    )
+    controller = SceneController(FakeSceneProvider(scene), NullLogger(), default_timeout=2.0)
+    cmd = BattleCommand(kind="move", move_index=1)
+
+    results = _run_step_and_drive(controller, cmd, scene)
+
     assert results["done"] is True
     assert results["info"]["won"] is False
 

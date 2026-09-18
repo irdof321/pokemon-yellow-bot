@@ -36,7 +36,7 @@ def main() -> None:
     services = []
     if os.getenv("AUTOLOAD_STATE", "true").lower() == "true":
         services.append(AutosaveService(game, logger,int(os.getenv("AUTOSAVE_INTERVAL_SECONDS","30"))))
-    # scene_manager = SceneManagerService(game, mqtt_client, logger)
+    # # scene_manager = SceneManagerService(game, mqtt_client, logger)
     # services.append(scene_manager)
     # services.append(BattleService(mqtt_client, logger, scene_manager))
 
@@ -44,7 +44,9 @@ def main() -> None:
     # available for future synchronous callers via controller.step()/.observation.
     #controller = SceneController(scene_manager, logger)
 
-    loop = EmulatorLoop(game, services=services)
+    # F5 saves the current state to a fresh tests/fixtures/battles/battle_<timestamp>.state
+    # every time -- never overwrites an earlier capture. Manual-play only.
+    loop = EmulatorLoop(game, services=services, capture_hotkey=True,capture_dir= "tests/fixtures/battles/")
 
     try:
         loop.run()

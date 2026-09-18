@@ -114,11 +114,20 @@ def filter_eligible_switch_slots(party: list, active_slot: Optional[int]) -> Lis
 
 def filter_eligible_move_slots(moves: list) -> List[int]:
     """Pure filtering logic behind BattleScene.eligible_move_slots, split out
-    so it's testable against plain fake objects (anything with .id) without
-    needing a real session/PyBoy. Move.id == 0 marks an empty slot (see
-    Move.load_from_bytes in game/data/move.py) -- mirrors
-    filter_eligible_switch_slots."""
-    return [i + 1 for i, m in enumerate(moves) if m.id != 0]
+    so it's testable against plain fake objects (anything with .id/
+    .get_remaining_pp()) without needing a real session/PyBoy. Move.id == 0
+    marks an empty slot (see Move.load_from_bytes in game/data/move.py) --
+    mirrors filter_eligible_switch_slots. Also excludes 0-PP moves (found via
+    the RL agent repeatedly re-selecting one, 2026-09-11): real Gen1 rejects
+    picking a move with no PP left ("There's no PP left for this move!") and
+    reopens the SAME move list rather than consuming a turn, which our
+    _execute_move had no way to detect -- it kept re-confirming the same
+    slot forever. NOT handled here: if ALL 4 moves are at 0 PP, Gen1 forces
+    Struggle automatically with no menu choice at all -- this filter just
+    returns an empty list in that case, which the caller doesn't yet special-
+    case (rare; a full team's moves are almost never simultaneously
+    exhausted from a fresh randomized battle)."""
+    return [i + 1 for i, m in enumerate(moves) if m.id != 0 and m.get_remaining_pp() > 0]
 
 
 def eligibility_error(scene: "BattleScene", cmd: BattleCommand) -> Optional[str]:
@@ -191,7 +200,14 @@ class BattleScene(Scene):
 
         # state machine phase
         self._phase: str = self._PHASE_IDLE
-        
+
+        # Last known "can the player still fight" reading, refreshed every
+        # update() while still in battle -- see can_still_fight's docstring
+        # for why compute_reward must read THIS instead of re-deriving it
+        # live once is_scene_complete() is already true. True at construction:
+        # a battle that was just set up always has an alive, active Pokemon.
+        self._last_can_still_fight: bool = True
+
         party_count = self._read_party_count(MainPokemonData.PartyCount)
         self.player_party: List[PartyPokemon] = [
             PartyPokemon(self.session, slot, self.session.version.is_yellow) for slot in range(1, party_count + 1)
@@ -235,6 +251,15 @@ class BattleScene(Scene):
         # 1) Refresh RAM-derived state
         self._menu_state = get_menu_state()
         self._refresh()  # subclass-only data refresh (pokemon stats etc.)
+
+        # Cache "can still fight" while battle RAM is still trustworthy.
+        # Must run BEFORE checking is_scene_complete() and skip updating once
+        # it's true, not after -- see can_still_fight's docstring for the bug
+        # this fixes (RL agent hit it for real, 2026-09-11: a same-turn team
+        # wipe reported a win because the live re-check ran once already
+        # back in the overworld).
+        if not self.is_scene_complete():
+            self._last_can_still_fight = self.player_active.current_hp > 0 or bool(self.eligible_switch_slots)
 
         # Computed once per update(), not inside _can_enqueue_input, so it
         # keeps advancing every cycle regardless of what else runs this
@@ -300,6 +325,7 @@ class BattleScene(Scene):
             return True
         return self.menu_top == MenuLocation.POKEMON_SELECTION.value
 
+
     @property
     def eligible_switch_slots(self) -> List[int]:
         """1-based party slots that are valid switch targets right now: alive
@@ -313,8 +339,41 @@ class BattleScene(Scene):
     @property
     def eligible_move_slots(self) -> List[int]:
         """1-based move slots that actually exist for the active Pokemon right
-        now (empty slots -- fewer than 4 known moves -- are excluded)."""
+        now (empty slots -- fewer than 4 known moves -- are excluded). Empty
+        (no move is choosable at all) once the active Pokemon has fainted:
+        current_hp == 0 is the same ground-truth check _ensure_ready_main_menu
+        already gates on -- checked directly rather than via
+        is_forced_switch_pending, which lags a few frames behind current_hp
+        on purpose (to avoid a false positive mid-faint-animation, see its
+        own docstring) and would wrongly still allow a move to be picked in
+        that window. Confirmed empirically (2026-09-10): on
+        ratata_just_died.state (fainted this instant, is_forced_switch_pending
+        still False), the old unconditional filter_eligible_move_slots(...)
+        wrongly returned [1, 2] -- a move command submitted there would get
+        enqueued and, with no FIGHT menu reachable, likely hang until
+        SceneController's timeout."""
+        if self.player_active.current_hp == 0:
+            return []
         return filter_eligible_move_slots(self.player_active.moves)
+
+    @property
+    def can_still_fight(self) -> bool:
+        """Last update()-cycle reading of "does the player have an alive,
+        active Pokemon, or another one to switch to" -- i.e. whether THEY
+        (not the opponent) are the reason is_scene_complete() just became
+        true. Deliberately a CACHE refreshed every update() while still in
+        battle, not a live re-derivation -- is_scene_complete() only becomes
+        true once BattleTypeID has ALREADY returned to 0 (see its own
+        docstring), meaning the game is back in the overworld by the time a
+        caller can react to it, and nothing guarantees player_active/
+        player_party are still meaningful to read at that point. Confirmed
+        broken in practice (2026-09-11): compute_reward's old direct read of
+        scene.player_active/player_party AFTER is_scene_complete() flipped
+        reported a win for a battle that was actually a full team wipe.
+        Reading the cache instead uses the last observation taken while
+        still definitely in battle, sidestepping the question of what battle
+        RAM even means once you're not."""
+        return self._last_can_still_fight
 
     @property
     def enemy_remaining_count(self) -> int:
@@ -634,8 +693,17 @@ class BattleScene(Scene):
             # never become true in that case, since the game goes straight to
             # the victory/blackout sequence and never re-shows FIGHT/ITEM/
             # PKMN/RUN, leaving done_event stuck until SceneController's own
-            # timeout.
-            if self.is_ready_main_menu or self.is_scene_complete():
+            # timeout. is_forced_switch_pending covers a third case, found
+            # via the RL agent (2026-09-11): the opponent's retaliation
+            # faints OUR active Pokemon this same turn (no switch involved
+            # at all, just an ordinary move that didn't kill fast enough) --
+            # the game shows "fainted!" then "Use next POKeMON? YES/NO",
+            # which needs A, not B (same as _ensure_ready_main_menu's
+            # identical handling of it a few lines up), but that logic only
+            # runs once no command is active, so this phase spun on B until
+            # timeout every time (see _execute_switch's identical fix and
+            # its longer rationale).
+            if self.is_ready_main_menu or self.is_scene_complete() or self.is_forced_switch_pending:
                 return True
 
             # While text is confidently still printing, skip its per-letter
@@ -683,12 +751,51 @@ class BattleScene(Scene):
             self._phase = self._PHASE_SWITCH_OPEN_MENU
 
             if self.menu_top == MenuLocation.POKEMON_SELECTION.value:
+                # Flush any button still sitting in the queue before
+                # entering Phase 2. Root-caused via a full frame-by-frame
+                # trace with real combat (2026-09-11): the button-apply loop
+                # runs on its own, slower cadence (once every ~60 frames)
+                # than this phase check (every 6 frames), so an "A" this
+                # same phase enqueued moments ago to advance "<name>
+                # fainted!" / "Use next POKeMON? YES/NO" can still be
+                # in-flight right as menu_top flips to the real party list --
+                # and gets applied up to ~1s late, right as the list finishes
+                # rendering, confirming whatever's under the DEFAULT cursor
+                # (the just-fainted Pokemon at slot 0) before Phase 2's own
+                # first DOWN/UP ever gets a chance to move it. That's
+                # exactly the "There's no will to fight!" rejection seen in
+                # two independent captured states. clear_buttons() empties
+                # the queue so only Phase 2's own decisions reach the game
+                # from here on.
+                self.session.clear_buttons()
                 self._phase = self._PHASE_SWITCH_SELECT_SLOT
                 return False
 
-            # Navigate to PKMN ourselves -- don't rely on _ensure_ready_main_menu(),
-            # which stops running the moment this command becomes active (see
-            # update()), and which would push toward FIGHT anyway, not PKMN.
+            if self.player_active.current_hp == 0:
+                # Forced switch, but the party-select screen isn't open YET --
+                # still on "<name> fainted!" / "Use next POKeMON? YES/NO"
+                # (ground truth via the battle struct, same check
+                # _ensure_ready_main_menu already uses for this exact
+                # window -- but that logic stops running the moment this
+                # command becomes active, see update()). Found via a
+                # captured state (2026-09-11): menu_top read None here
+                # (neither POKEMON_SELECTION nor any main-menu location),
+                # meaning _navigate_main_menu_to below was pressing
+                # directional buttons blindly on the YES/NO prompt instead
+                # of a main menu that wasn't actually on screen -- e.g.
+                # landing on/confirming NO -- leaving the switch stuck with
+                # no valid menu to recover from. Press A instead, exactly
+                # like _ensure_ready_main_menu does, until the party-select
+                # screen actually appears (caught by the check above on a
+                # later cycle).
+                if self._can_enqueue_input(now):
+                    self._enqueue_input(now, GBAButton.A)
+                return False
+
+            # Voluntary path: navigate to PKMN ourselves -- don't rely on
+            # _ensure_ready_main_menu(), which stops running the moment this
+            # command becomes active (see update()), and which would push
+            # toward FIGHT anyway, not PKMN.
             if not self._navigate_main_menu_to(now, MainMenuButton.PKMN):
                 return False
             if self._can_enqueue_input(now):
@@ -762,7 +869,22 @@ class BattleScene(Scene):
         # tests/fixtures/battle_forced_switch_screen.state exists)
         # --------------------------------------------------------------
         if self._phase == self._PHASE_SWITCH_POST_DIALOG:
-            if self.is_ready_main_menu or self.is_scene_complete():
+            # is_forced_switch_pending here means the Pokemon we JUST sent in
+            # has ALSO fainted already (its own definition requires
+            # player_active.current_hp == 0) -- a same-turn cascading KO
+            # (opponent's retaliation finishes off a low-HP switch-in before
+            # this command ever reaches is_ready_main_menu). Found via the RL
+            # agent hitting this for real (2026-09-11): pressing B here never
+            # advances the "Use next POKeMON? YES/NO" prompt that follows
+            # (that needs A, same as _ensure_ready_main_menu's own handling
+            # of it a few lines up) -- but that logic only runs once no
+            # command is active, so this phase spun on B until timeout,
+            # leaving the party-select cursor stuck wherever it last was.
+            # Ending the command here instead hands control back to
+            # _ensure_ready_main_menu (advances fainted!/Y-N via A) and lets
+            # the caller submit a fresh switch for the new vacancy, exactly
+            # like any other forced switch.
+            if self.is_ready_main_menu or self.is_scene_complete() or self.is_forced_switch_pending:
                 return True
 
             self._try_speed_up_text_print()

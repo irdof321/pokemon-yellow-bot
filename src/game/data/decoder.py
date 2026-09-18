@@ -73,3 +73,31 @@ def decode_pkm_text(bytes_, table=PKM_GEN1_TABLE, stop_at_terminator=True):
         else:
             out.append(f"<?{b:02X}>")
     return "".join(out)
+
+
+_ENCODE_TABLE = {v: k for k, v in PKM_GEN1_TABLE.items() if len(v) == 1}
+
+
+def encode_pkm_text(text: str, length: int, table=PKM_GEN1_TABLE) -> list:
+    """Inverse of decode_pkm_text: string -> a fixed-length list of Gen I
+    bytes, terminated with 0x50 and padded with more 0x50 up to `length`
+    (this project had no encoder at all before -- only ever read species
+    names computed from species_id, never written raw name text; needed
+    once mutating a Pokemon's species means the in-battle display name
+    should follow it too, e.g. PlayerPokemonName / a party slot's Nickname
+    field). Only handles single-character mappings (A-Z, a-z, digits,
+    space, the few punctuation marks in the table) -- raises on anything
+    else (a multi-char ligature like "Pk", or a character with no Gen1
+    mapping at all) rather than silently dropping it.
+    """
+    out = []
+    for ch in text:
+        if ch not in _ENCODE_TABLE:
+            raise ValueError(f"no Gen1 encoding for character {ch!r} in {text!r}")
+        out.append(_ENCODE_TABLE[ch])
+        if len(out) >= length - 1:
+            break
+    out.append(0x50)
+    while len(out) < length:
+        out.append(0x50)
+    return out[:length]
