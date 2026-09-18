@@ -1,0 +1,8 @@
+{
+  "description": "Player's active (Caterpie, level 5) is 35 levels below the opponent (Geodude, level 40) -- no move available changes the outcome. Party slot 2 (Charmander, level 40) has WATER GUN in slot 1, double super-effective against Geodude's Rock/Ground typing.",
+  "expected": {
+    "correct_action": "switch",
+    "party_slot": 2,
+    "reason": "slot 1 (Caterpie, L5) cannot realistically win against a L40 opponent no matter what move is picked; slot 2 (Charmander, L40) has WATER GUN, super-effective against Rock/Ground"
+  }
+}

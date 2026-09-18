@@ -1,0 +1,8 @@
+{
+  "description": "Player's active (Charmander) has a Fire move in slot 1 against a Grass/Poison opponent (Bulbasaur) at the same level. Slots 2-4 are non-damaging filler moves.",
+  "expected": {
+    "correct_action": "move",
+    "move_slot": 1,
+    "reason": "FIRE PUNCH is super-effective (Fire vs Grass); the other 3 slots don't damage at all"
+  }
+}

@@ -1,0 +1,7 @@
+pyboy>=2.6.0
+loguru>=0.7.3
+numpy>=2.3.2
+paho-mqtt>=2.1.0
+python-dotenv>=1.2.3
+PySDL2>=0.9.17
+pysdl2-dll>=2.32.0

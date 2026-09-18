@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pokemon-yellow-bot"
+version = "0.1.0"
+description = "PyBoy-based Pokemon Red battle-automation framework"
+requires-python = ">=3.10"
+dependencies = [
+    # pyboy pinned EXACTLY, not >=: .state save files are version-sensitive
+    # binary data (found the hard way, 2026-09-10 -- a fresh install pulled
+    # 2.7.0, and every fixture captured under 2.6.0 failed to load with
+    # "PyBoyAssertException: No data"). Loosen this only after confirming
+    # state-file compatibility across the version range, not by assumption.
+    "pyboy==2.6.0",
+    "loguru>=0.7.3",
+    "numpy>=2.3.2",
+    "paho-mqtt>=2.1.0",
+    "python-dotenv>=1.2.3",
+    "PySDL2>=0.9.17",
+    "pysdl2-dll>=2.32.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"game.training" = ["*.json"]

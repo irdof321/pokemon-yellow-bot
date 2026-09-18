@@ -1,0 +1,8 @@
+{
+  "description": "3v4 trainer battle. Opponent (level 30): Squirtle/Water ACTIVE (own move in slot 2), Charmander/Fire (own move in slot 3), Bulbasaur/Grass (own move in slot 1). Player (level 30 except the filler): Charmander/Fire ACTIVE (own move in slot 3), Squirtle/Water (own move in slot 4), Bulbasaur/Grass (own move in slot 1), plus a level-5 Rattata/Normal filler in slot 4. Every trio member (both sides) also carries one genuine status move (sleep/poison/paralysis) mixed into its moveset, at a random slot.",
+  "expected": {
+    "correct_action": "switch",
+    "party_slot": 3,
+    "reason": "player's active (Charmander, Fire) is resisted by the opponent's active (Squirtle, Water); party slot 3 (Bulbasaur, Grass) is super-effective against Water -- switch there first rather than attacking into the bad matchup"
+  }
+}

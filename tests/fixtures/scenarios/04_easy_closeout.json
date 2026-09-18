@@ -1,0 +1,8 @@
+{
+  "description": "Opponent (Rattata, level 25) is at 1 HP. Player's active (Squirtle, same level, healthy) has a damaging move (POUND) in slot 1.",
+  "expected": {
+    "correct_action": "move",
+    "move_slot": 1,
+    "reason": "opponent is at 1 HP -- any damaging move wins immediately"
+  }
+}

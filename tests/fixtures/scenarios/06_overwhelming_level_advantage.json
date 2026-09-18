@@ -1,0 +1,8 @@
+{
+  "description": "3v3 trainer battle. Opponent: 3x Rattata, all level 5, all 4 move slots real damaging attacks (no status moves anywhere in this scenario). Player: Charmander/Fire ACTIVE (level 50, FIRE PUNCH in slot 1), Squirtle/Water (level 50), Bulbasaur/Grass (level 50) -- same, all 4 slots deal damage. A 45-level gap on every matchup.",
+  "expected": {
+    "correct_action": "move",
+    "move_slot": 1,
+    "reason": "a 45-level advantage over a plain Rattata means any damaging move wins comfortably; the real question is across the WHOLE fight, not just turn 1 -- after KOing one of the opponent's 3 Rattata, does the agent ever switch its own healthy, massively favored active Pokemon instead of continuing to attack? It never needs to."
+  }
+}

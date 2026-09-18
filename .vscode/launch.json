@@ -1,0 +1,76 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Watch: menu state (manual play)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/watch_menu_state.py",
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Debug: moves 1, 2, 3 in sequence",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/debug_cursor_oscillation.py",
+            "args": ["1", "2", "3"],
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Debug: move_index=1 (Scratch)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/debug_cursor_oscillation.py",
+            "args": ["1"],
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Debug: move_index=2 (Growl)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/debug_cursor_oscillation.py",
+            "args": ["2"],
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Debug: move_index=3 (Ember)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/debug_cursor_oscillation.py",
+            "args": ["3"],
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Debug: move_index=4 (empty slot)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/debug_cursor_oscillation.py",
+            "args": ["4"],
+            "python": "${workspaceFolder}/venv/Scripts/python.exe",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

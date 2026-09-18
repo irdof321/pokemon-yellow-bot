@@ -1,0 +1,8 @@
+{
+  "description": "Player's active (Squirtle, level 30) is at 3 HP against a same-level opponent (Rattata, pure Normal) -- one more hit plausibly faints it. Party slot 2 (Pidgey, level 30) is at full HP and has POUND (slot 1) to actually fight back.",
+  "expected": {
+    "correct_action": "switch",
+    "party_slot": 2,
+    "reason": "slot 1 is one hit from fainting for no benefit; slot 2 is healthy and can actually win, not just stall"
+  }
+}
